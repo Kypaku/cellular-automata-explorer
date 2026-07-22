@@ -303,12 +303,20 @@ export function useRuleTags() {
   }
 
   function exportToFile(): void {
+    const defaultName = 'ca-rule-tags'
+    const entered = typeof window !== 'undefined' ? window.prompt('File name for the exported tags/rules:', defaultName) : defaultName
+    if (entered === null) {
+      return // user cancelled the prompt
+    }
+    const safeName = entered.trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || defaultName
+    const fileName = safeName.toLowerCase().endsWith('.json') ? safeName : `${safeName}.json`
+
     const payload = { tags: [...tags], rules: JSON.parse(JSON.stringify(rules)) }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'ca-rule-tags.json'
+    link.download = fileName
     link.click()
     URL.revokeObjectURL(url)
   }

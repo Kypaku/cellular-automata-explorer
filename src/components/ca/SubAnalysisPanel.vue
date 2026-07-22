@@ -27,8 +27,6 @@ const props = defineProps<{
 
 const emit = defineEmits(['run', 'stop', 'select-rule', 'undo-found', 'clear-tag'])
 
-const resultFilter = ref<'all' | 'found' | 'missing'>('all') // 'all' | 'found' | 'missing'
-
 // The tag that found rules are attached to. Defaults to the built-in
 // LargeStructures tag but the user can pick any existing tag (or type a new one).
 const targetTag = ref<string>(LARGE_STRUCTURES_TAG)
@@ -51,40 +49,7 @@ const chunkNote = computed(() => {
   return `at W=${w}: chunk ≈ ${cw} cells × ${clampInt(keep.value, 1, 4000, SUBANALYSIS_DEFAULTS.keep)} rows, ~${chunks} chunks`
 })
 
-const resultRows = computed(() =>
-  props.results.map((res) => ({
-    id: res.id,
-    name: res.name,
-    snapshot: res.snapshot,
-    found: res.foundWidth !== null,
-    text:
-      res.foundWidth !== null
-        ? `W = ${res.foundWidth} (max. dev. ${fmtPercent(res.foundDev)})`
-        : res.bestWidth !== null
-          ? `not found (best ${fmtPercent(res.bestDev)} at W=${res.bestWidth})`
-          : 'not found',
-  }))
-)
-
-const foundCount = computed(() => props.results.filter((r) => r.foundWidth !== null).length)
-const missingCount = computed(() => props.results.length - foundCount.value)
-
-const filteredResultRows = computed(() => {
-  if (resultFilter.value === 'found') {
-    return resultRows.value.filter((row) => row.found)
-  }
-  if (resultFilter.value === 'missing') {
-    return resultRows.value.filter((row) => !row.found)
-  }
-  return resultRows.value
-})
-
-function fmtPercent(fraction: number | null | undefined): string {
-  if (fraction === null || fraction === undefined) {
-    return '—'
-  }
-  return `${(fraction * 100).toFixed(1)}%`
-}
+const missingCount = computed(() => props.results.filter((r) => r.foundWidth === null).length)
 
 function clampInt(value: number, min: number, max: number, fallback: number): number {
   const num = Math.floor(Number(value))
@@ -96,10 +61,10 @@ function clampInt(value: number, min: number, max: number, fallback: number): nu
 
 function onRun(config: AnalysisRunConfig): void {
   keep.value = clampInt(keep.value, 1, 2000, SUBANALYSIS_DEFAULTS.keep)
-  height.value = clampInt(height.value, keep.value, 4000, SUBANALYSIS_DEFAULTS.height)
-  minWidth.value = clampInt(minWidth.value, 4, 4000, SUBANALYSIS_DEFAULTS.minWidth)
-  maxWidth.value = clampInt(maxWidth.value, minWidth.value, 4000, SUBANALYSIS_DEFAULTS.maxWidth)
-  step.value = clampInt(step.value, 1, 1000, SUBANALYSIS_DEFAULTS.step)
+  height.value = clampInt(height.value, keep.value, 40000, SUBANALYSIS_DEFAULTS.height)
+  minWidth.value = clampInt(minWidth.value, 4, 40000, SUBANALYSIS_DEFAULTS.minWidth)
+  maxWidth.value = clampInt(maxWidth.value, minWidth.value, 40000, SUBANALYSIS_DEFAULTS.maxWidth)
+  step.value = clampInt(step.value, 1, 10000, SUBANALYSIS_DEFAULTS.step)
 
   const cp = Number(chunkPercent.value)
   chunkPercent.value = Number.isNaN(cp) ? SUBANALYSIS_DEFAULTS.chunkPercent : Math.max(0.5, Math.min(50, cp))
@@ -214,32 +179,6 @@ function onRun(config: AnalysisRunConfig): void {
           @undo-found="emit('undo-found')"
           @clear-tag="(tag) => emit('clear-tag', tag)"
         />
-
-        <div class="ca-inline" v-if="resultRows.length">
-          <span class="ca-seg">
-            <button type="button" :class="{ on: resultFilter === 'all' }" @click="resultFilter = 'all'">all ({{ resultRows.length }})</button>
-            <button type="button" :class="{ on: resultFilter === 'found' }" @click="resultFilter = 'found'">found ({{ foundCount }})</button>
-            <button type="button" :class="{ on: resultFilter === 'missing' }" @click="resultFilter = 'missing'">not found ({{ missingCount }})</button>
-          </span>
-          <span class="ca-meter">click a row to open that rule</span>
-        </div>
-
-        <ul class="ca-count-list" v-if="filteredResultRows.length">
-          <li
-            v-for="row in filteredResultRows"
-            :key="row.id"
-            class="ca-count-item ca-sub-result"
-            role="button"
-            tabindex="0"
-            title="open this rule"
-            @click="emit('select-rule', row.snapshot)"
-            @keyup.enter="emit('select-rule', row.snapshot)"
-          >
-            <span class="ca-count-chip" :class="row.found ? 'ca-sub-ok' : 'ca-sub-miss'">{{ row.found ? '✓' : '—' }}</span>
-            <span class="ca-count-desc"><strong>{{ row.name }}</strong>: {{ row.text }}</span>
-          </li>
-        </ul>
-        <div class="ca-meter" v-else-if="resultRows.length">no rules in this filter</div>
       </template>
     </AnalysisRunControls>
   </div>

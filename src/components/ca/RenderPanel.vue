@@ -25,6 +25,7 @@ const statusText = ref('')
 const errorText = ref('')
 const imageUrl = ref('')
 const imageInfo = ref('')
+const generatedRuleLabel = ref('')
 
 function clampInt(value: number, min: number, max: number, fallback: number): number {
   const num = Math.floor(Number(value))
@@ -99,6 +100,7 @@ async function generate(): Promise<void> {
     revokeImage()
     imageUrl.value = URL.createObjectURL(blob)
     imageInfo.value = `${w}×${h} cells · ${outWidth}×${outHeight} px · ${(blob.size / 1e6).toFixed(2)} MB`
+    generatedRuleLabel.value = context.ruleLabel
     statusText.value = 'done'
   } catch (error) {
     errorText.value = error instanceof Error ? error.message : String(error)
@@ -108,7 +110,7 @@ async function generate(): Promise<void> {
   }
 }
 
-const downloadName = computed(() => `ca-${width.value}x${height.value}.png`)
+const downloadName = computed(() => `ca-${generatedRuleLabel.value || 'rule'}-${width.value}x${height.value}.png`)
 
 onBeforeUnmount(revokeImage)
 </script>

@@ -37,6 +37,8 @@ export interface RenderContext {
   collisionMode?: CollisionMode
   collisionFixed?: number
   noiseP: number
+  /** Filesystem-safe label describing the current rule (e.g. "3s-totalistic-12345"), used to name exported files. */
+  ruleLabel: string
   /** Builds the initial row for the requested width using the current init/seed. */
   makeInitialRow: (width: number) => Uint8Array
 }

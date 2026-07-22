@@ -153,6 +153,21 @@ export function useCellularAutomaton() {
     return clampCollisionFixed(collisionFixed.value, stateCount.value)
   }
 
+  /** Filesystem-safe label describing the current rule, used to name exported files (e.g. large-image PNG downloads). */
+  function currentRuleLabel(): string {
+    const states = stateCount.value
+    if (mode.value === 'totalistic') {
+      return `${states}s-totalistic-${totalisticCodes[states]}`
+    }
+    if (mode.value === 'descendants') {
+      const collision = collisionMode.value === 'fixed' ? `fixed${currentCollisionFixed()}` : collisionMode.value
+      return `${states}s-descendants-${currentEmissionRule()}-${collision}`
+    }
+    const rule = currentLocalRule()
+    const shortRule = rule.length > 40 ? `${rule.slice(0, 40)}-${rule.length}d` : rule
+    return `${states}s-local-${shortRule}`
+  }
+
   function storeCurrentEmission(): void {
     emissionRules[stateCount.value] = sanitizeStateString(
       emissionInputValue.value,
@@ -813,6 +828,7 @@ export function useCellularAutomaton() {
       collisionMode: collisionMode.value,
       collisionFixed: currentCollisionFixed(),
       noiseP: noise.value / 100,
+      ruleLabel: currentRuleLabel(),
       makeInitialRow: (width: number) =>
         buildInitialRow(width, config, stateCount.value, init.value, seedInputValue.value),
     }
