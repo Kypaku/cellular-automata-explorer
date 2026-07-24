@@ -11,6 +11,7 @@ import { useRuleLinesAnalysis } from '../composables/useRuleLinesAnalysis'
 import { useRuleChaosAnalysis } from '../composables/useRuleChaosAnalysis'
 import { useRuleSubAnalysis } from '../composables/useRuleSubAnalysis'
 import { FIELDS_TAG, GLIDERS_TAG, CUSTOM_SEARCH_TAG, LINES_TAG, CHAOS_TAG, LARGE_STRUCTURES_TAG } from '../constants/ca'
+import { CUSTOM_SEARCH_STORAGE_KEY } from '../constants/ca'
 import type {
   AnalysisInitMode,
   AnalysisRuleInput,
@@ -22,6 +23,7 @@ import type {
   SubAnalyzeOptions,
 } from '../types/ca'
 import { partsFromSnapshot } from '../utils/caMath'
+import { testRuleAgainstAllTags, type TagTestResult } from '../utils/caAnalysis'
 import RuleControls from './ca/RuleControls.vue'
 import InitControls from './ca/InitControls.vue'
 import LegendPanel from './ca/LegendPanel.vue'
@@ -226,6 +228,41 @@ function loadActiveTaggedRule(): void {
 
 function onToggleTag(tagName: string): void {
   toggleTagOnRule(tagName, currentRuleParts(), captureRuleSnapshot())
+}
+
+// Result of "test current rule for tags": which tag every analysis would assign.
+const tagTestResults = ref<TagTestResult[] | null>(null)
+
+/** Reads the persisted custom-search templates (kept in sync by CustomSearchPanel). */
+function loadCustomSearchPatterns(): CustomPattern[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SEARCH_STORAGE_KEY)
+    if (!raw) {
+      return []
+    }
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as CustomPattern[]) : []
+  } catch {
+    return []
+  }
+}
+
+// Runs every analysis on the current rule and records which tags it would get.
+function onTestRuleTags(): void {
+  const parts = partsFromSnapshot(captureRuleSnapshot())
+  tagTestResults.value = testRuleAgainstAllTags(parts, loadCustomSearchPatterns())
+}
+
+// Attaches a passed test's tag to the current rule (class tags replace the rule's
+// existing class; orthogonal tags are added independently), creating it if needed.
+function onApplyTestTag(result: TagTestResult): void {
+  const parts = currentRuleParts()
+  const snapshot = captureRuleSnapshot()
+  if (result.kind === 'class') {
+    applyAnalysisTag(result.tag, parts, snapshot)
+  } else {
+    applyOrthogonalTag(result.tag, true, parts, snapshot)
+  }
 }
 
 function onBrowseTag(tagName: string): void {
@@ -916,6 +953,7 @@ function onSelectSubRule(snapshot: RuleSnapshot): void {
         :rules-for-active-tag="rulesForActiveTag"
         :active-index="activeIndex"
         :nav-status-text="navStatusText"
+        :tag-test-results="tagTestResults"
         @add-tag="addTag"
         @rename-tag="renameTag"
         @delete-tag="deleteTag"
@@ -928,6 +966,8 @@ function onSelectSubRule(snapshot: RuleSnapshot): void {
         @jump-to-rule="onJumpToTaggedRule"
         @export-file="exportToFile"
         @import-file="onImportFile"
+        @test-rule="onTestRuleTags"
+        @apply-test-tag="onApplyTestTag"
       />
     </div>
 

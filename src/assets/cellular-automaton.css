@@ -356,6 +356,28 @@ html.dark .ca-wrap {
 .ca-tag-input {
   max-width: 200px;
 }
+.ca-tag-test {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--ca-border);
+}
+.ca-tag-test-item {
+  border: 0.5px solid var(--ca-border);
+  border-radius: 999px;
+  background: var(--ca-chip-bg);
+  padding: 5px 12px;
+  font-size: 13px;
+  color: var(--ca-chip-text);
+}
+.ca-tag-test-item.on {
+  background: var(--ca-chip-active);
+}
+.ca-tag-test-item.ca-tag-test-class {
+  font-weight: 600;
+}
 .ca-rule-list {
   list-style: none;
   margin: 0;

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { TaggedRule } from '../../types/ca'
+import type { TagTestResult } from '../../utils/analysis/tagTest'
 
-defineProps<{
+const props = defineProps<{
   tags: string[]
   currentRuleTags: string[]
   tagCounts: Record<string, number>
@@ -10,6 +11,7 @@ defineProps<{
   rulesForActiveTag: TaggedRule[]
   activeIndex: number
   navStatusText: string
+  tagTestResults?: TagTestResult[] | null
 }>()
 
 const emit = defineEmits([
@@ -25,7 +27,12 @@ const emit = defineEmits([
   'jump-to-rule',
   'export-file',
   'import-file',
+  'test-rule',
+  'apply-test-tag',
 ])
+
+// The tests the current rule passed (would be tagged with), in test order.
+const passedTests = computed(() => (props.tagTestResults || []).filter((r) => r.passed))
 
 const newTagName = ref('')
 const editingTag = ref<string | null>(null)
@@ -132,6 +139,33 @@ function triggerImport(): void {
             @keyup.enter="submitNewTag"
           />
           <button type="button" @click="submitNewTag">add tag</button>
+        </div>
+
+        <div class="ca-tag-test">
+          <div class="ca-inline">
+            <button type="button" @click="emit('test-rule')" title="run every analysis on the current rule and show which tags it would get">
+              test current rule for tags
+            </button>
+          </div>
+          <template v-if="tagTestResults">
+            <label class="ca-label">
+              Passed {{ passedTests.length }} / {{ tagTestResults.length }} test{{ tagTestResults.length === 1 ? '' : 's' }}
+            </label>
+            <div class="ca-tag-list" v-if="passedTests.length">
+              <button
+                v-for="result in passedTests"
+                :key="result.tag"
+                type="button"
+                class="ca-tag-test-item"
+                :class="{ 'ca-tag-test-class': result.kind === 'class', on: currentRuleTags.includes(result.tag) }"
+                :title="currentRuleTags.includes(result.tag) ? 'already on the current rule — click to add again' : 'add this tag to the current rule'"
+                @click="emit('apply-test-tag', result)"
+              >
+                ✓ {{ result.tag }}
+              </button>
+            </div>
+            <div class="ca-meter" v-else>the rule passed no tests</div>
+          </template>
         </div>
       </div>
 

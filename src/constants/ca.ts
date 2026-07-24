@@ -212,7 +212,7 @@ export const CHAOS_DEFAULTS = {
   height: 200, // H of the evolved generation
   init: 'random' as 'random' | 'single', // 'random' | 'single'
   cutTop: 0, // % of the top (transient) rows discarded before tiling
-  blockSize: 5, // M: 5×5 patterns, per the user's request
+  blockSize: 4, // M: 5×5 patterns, per the user's request
   maxDominant: 5, // % — max share of the most frequent pattern to still count as chaos
 }
 
