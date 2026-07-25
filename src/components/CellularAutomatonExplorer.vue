@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import '../assets/cellular-automaton.css'
 import { useCellularAutomaton } from '../composables/useCellularAutomaton'
 import { useRuleTags } from '../composables/useRuleTags'
@@ -10,20 +10,8 @@ import { useRuleCustomSearchAnalysis } from '../composables/useRuleCustomSearchA
 import { useRuleLinesAnalysis } from '../composables/useRuleLinesAnalysis'
 import { useRuleChaosAnalysis } from '../composables/useRuleChaosAnalysis'
 import { useRuleSubAnalysis } from '../composables/useRuleSubAnalysis'
-import { FIELDS_TAG, GLIDERS_TAG, CUSTOM_SEARCH_TAG, LINES_TAG, CHAOS_TAG, LARGE_STRUCTURES_TAG } from '../constants/ca'
-import { CUSTOM_SEARCH_STORAGE_KEY } from '../constants/ca'
-import type {
-  AnalysisInitMode,
-  AnalysisRuleInput,
-  AnalysisSourceMode,
-  CustomPattern,
-  GliderCondition,
-  RuleParts,
-  RuleSnapshot,
-  SubAnalyzeOptions,
-} from '../types/ca'
-import { partsFromSnapshot } from '../utils/caMath'
-import { testRuleAgainstAllTags, type TagTestResult } from '../utils/caAnalysis'
+import { useTagInteractions } from '../composables/useTagInteractions'
+import { useAnalysisRunners } from '../composables/useAnalysisRunners'
 import RuleControls from './ca/RuleControls.vue'
 import InitControls from './ca/InitControls.vue'
 import LegendPanel from './ca/LegendPanel.vue'
@@ -38,6 +26,7 @@ import LinesAnalysisPanel from './ca/LinesAnalysisPanel.vue'
 import ChaosAnalysisPanel from './ca/ChaosAnalysisPanel.vue'
 import SubAnalysisPanel from './ca/SubAnalysisPanel.vue'
 
+const ca = useCellularAutomaton()
 const {
   COL,
   canvasRef,
@@ -98,7 +87,6 @@ const {
   onRandomRule,
   onEmissionInput,
   setCollisionMode,
-  setCollisionFixed,
   onCollisionFixedInput,
   setEnergyEnabled,
   onInitialEnergyInput,
@@ -106,728 +94,89 @@ const {
   captureRuleSnapshot,
   applyRuleSnapshot,
   getRenderContext,
-} = useCellularAutomaton()
+} = ca
 
-const {
-  tags,
-  rules,
-  activeTag,
-  activeIndex,
-  rulesForActiveTag,
-  navStatusText,
-  tagCounts,
-  addTag,
-  renameTag,
-  deleteTag,
-  closeBrowse,
-  selectTag,
-  tagsForRule,
-  toggleTagOnRule,
-  deleteRule,
-  clearTag,
-  next: nextTaggedRule,
-  prev: prevTaggedRule,
-  jumpTo,
-  exportToFile,
-  importFromFile,
-  activeRule,
-  applyAnalysisTag,
-  applyOrthogonalTag,
-} = useRuleTags()
+const tagsApi = useRuleTags()
+const { tags, rules, activeTag, activeIndex, rulesForActiveTag, navStatusText, tagCounts, addTag, renameTag, deleteTag, closeBrowse, deleteRule, exportToFile } = tagsApi
 
-const {
-  running: analysisRunning,
-  done: analysisDone,
-  total: analysisTotal,
-  progress: analysisProgress,
-  currentCode: analysisCurrentCode,
-  counts: analysisCounts,
-  start: startAnalysis,
-  stop: stopAnalysis,
-} = useRuleAnalysis()
+const analysisApi = useRuleAnalysis()
+const { running: analysisRunning, done: analysisDone, total: analysisTotal, progress: analysisProgress, currentCode: analysisCurrentCode, counts: analysisCounts, stop: stopAnalysis } = analysisApi
 
-const {
-  running: fieldsRunning,
-  done: fieldsDone,
-  total: fieldsTotal,
-  progress: fieldsProgress,
-  currentCode: fieldsCurrentCode,
-  found: fieldsFound,
-  start: startFieldsAnalysis,
-  stop: stopFieldsAnalysis,
-} = useRuleFieldsAnalysis()
+const fieldsApi = useRuleFieldsAnalysis()
+const { running: fieldsRunning, done: fieldsDone, total: fieldsTotal, progress: fieldsProgress, currentCode: fieldsCurrentCode, found: fieldsFound, stop: stopFieldsAnalysis } = fieldsApi
 
-const {
-  running: glidersRunning,
-  done: glidersDone,
-  total: glidersTotal,
-  progress: glidersProgress,
-  currentCode: glidersCurrentCode,
-  found: glidersFound,
-  start: startGlidersAnalysis,
-  stop: stopGlidersAnalysis,
-} = useRuleGlidersAnalysis()
+const glidersApi = useRuleGlidersAnalysis()
+const { running: glidersRunning, done: glidersDone, total: glidersTotal, progress: glidersProgress, currentCode: glidersCurrentCode, found: glidersFound, stop: stopGlidersAnalysis } = glidersApi
 
-const {
-  running: customRunning,
-  done: customDone,
-  total: customTotal,
-  progress: customProgress,
-  currentCode: customCurrentCode,
-  found: customFound,
-  start: startCustomSearch,
-  stop: stopCustomSearch,
-} = useRuleCustomSearchAnalysis()
+const customSearchApi = useRuleCustomSearchAnalysis()
+const { running: customRunning, done: customDone, total: customTotal, progress: customProgress, currentCode: customCurrentCode, found: customFound, stop: stopCustomSearch } = customSearchApi
 
-const {
-  running: linesRunning,
-  done: linesDone,
-  total: linesTotal,
-  progress: linesProgress,
-  currentCode: linesCurrentCode,
-  found: linesFound,
-  start: startLinesAnalysis,
-  stop: stopLinesAnalysis,
-} = useRuleLinesAnalysis()
+const linesApi = useRuleLinesAnalysis()
+const { running: linesRunning, done: linesDone, total: linesTotal, progress: linesProgress, currentCode: linesCurrentCode, found: linesFound, stop: stopLinesAnalysis } = linesApi
 
-const {
-  running: chaosRunning,
-  done: chaosDone,
-  total: chaosTotal,
-  progress: chaosProgress,
-  currentCode: chaosCurrentCode,
-  found: chaosFound,
-  start: startChaosAnalysis,
-  stop: stopChaosAnalysis,
-} = useRuleChaosAnalysis()
+const chaosApi = useRuleChaosAnalysis()
+const { running: chaosRunning, done: chaosDone, total: chaosTotal, progress: chaosProgress, currentCode: chaosCurrentCode, found: chaosFound, stop: stopChaosAnalysis } = chaosApi
 
-const {
-  running: subRunning,
-  done: subDone,
-  total: subTotal,
-  progress: subProgress,
-  currentName: subCurrentName,
-  found: subFound,
-  results: subResults,
-  start: startSubAnalysis,
-  stop: stopSubAnalysis,
-} = useRuleSubAnalysis()
+const subApi = useRuleSubAnalysis()
+const { running: subRunning, done: subDone, total: subTotal, progress: subProgress, currentName: subCurrentName, found: subFound, results: subResults, stop: stopSubAnalysis } = subApi
 
 onMounted(initialize)
 
-/** Fields that identify "the same rule" for tagging, independent of init/seed/height. */
-function currentRuleParts(): RuleParts {
-  return mode.value === 'totalistic'
-    ? { stateCount: stateCount.value, mode: 'totalistic', code: codeValue.value, localRule: '' }
-    : { stateCount: stateCount.value, mode: 'local', code: 0, localRule: ruleInputValue.value }
-}
+const {
+  currentRuleTags,
+  onToggleTag,
+  tagTestResults,
+  onTestRuleTags,
+  onApplyTestTag,
+  onBrowseTag,
+  onNextTaggedRule,
+  onPrevTaggedRule,
+  onJumpToTaggedRule,
+  onImportFile,
+} = useTagInteractions({ mode, stateCount, codeValue, ruleInputValue, captureRuleSnapshot, applyRuleSnapshot, tags: tagsApi })
 
-const currentRuleTags = computed(() => tagsForRule(currentRuleParts()))
-
-function loadActiveTaggedRule(): void {
-  if (activeRule.value) {
-    applyRuleSnapshot(activeRule.value.snapshot)
-  }
-}
-
-function onToggleTag(tagName: string): void {
-  toggleTagOnRule(tagName, currentRuleParts(), captureRuleSnapshot())
-}
-
-// Result of "test current rule for tags": which tag every analysis would assign.
-const tagTestResults = ref<TagTestResult[] | null>(null)
-
-/** Reads the persisted custom-search templates (kept in sync by CustomSearchPanel). */
-function loadCustomSearchPatterns(): CustomPattern[] {
-  try {
-    const raw = localStorage.getItem(CUSTOM_SEARCH_STORAGE_KEY)
-    if (!raw) {
-      return []
-    }
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as CustomPattern[]) : []
-  } catch {
-    return []
-  }
-}
-
-// Runs every analysis on the current rule and records which tags it would get.
-function onTestRuleTags(): void {
-  const parts = partsFromSnapshot(captureRuleSnapshot())
-  tagTestResults.value = testRuleAgainstAllTags(parts, loadCustomSearchPatterns())
-}
-
-// Attaches a passed test's tag to the current rule (class tags replace the rule's
-// existing class; orthogonal tags are added independently), creating it if needed.
-function onApplyTestTag(result: TagTestResult): void {
-  const parts = currentRuleParts()
-  const snapshot = captureRuleSnapshot()
-  if (result.kind === 'class') {
-    applyAnalysisTag(result.tag, parts, snapshot)
-  } else {
-    applyOrthogonalTag(result.tag, true, parts, snapshot)
-  }
-}
-
-function onBrowseTag(tagName: string): void {
-  selectTag(tagName)
-}
-
-function onNextTaggedRule(): void {
-  nextTaggedRule()
-  loadActiveTaggedRule()
-}
-
-function onPrevTaggedRule(): void {
-  prevTaggedRule()
-  loadActiveTaggedRule()
-}
-
-function onJumpToTaggedRule(index: number): void {
-  jumpTo(index)
-  loadActiveTaggedRule()
-}
-
-function onImportFile(file: File): void {
-  importFromFile(file)
-}
-
-/** Resolves the union of saved rules carrying any of the given tags into
- * classifier-ready inputs (parts + snapshot + display name). */
-function rulesForTags(tagNames: string[]): AnalysisRuleInput[] {
-  const selected = new Set(tagNames)
-  if (!selected.size) {
-    return []
-  }
-  return rules
-    .filter((rule) => Array.isArray(rule.tags) && rule.tags.some((t) => selected.has(t)))
-    .map((rule) => ({
-      parts: partsFromSnapshot(rule.snapshot),
-      snapshot: rule.snapshot,
-      name: rule.name,
-    }))
-}
-
-interface RunAnalysisPayload {
-  from: number
-  to: number
-  width: number
-  height: number
-  init: AnalysisInitMode
-  chaosFlux: number
-  sparseFill: number
-  windowFraction: number
-  sourceMode: AnalysisSourceMode
-  sampleCount: number
-  tags: string[]
-}
-
-function onRunAnalysis({
-  from,
-  to,
-  width,
-  height,
-  init: analysisInit,
-  chaosFlux,
-  sparseFill,
-  windowFraction,
-  sourceMode,
-  sampleCount,
-  tags: selectedTags,
-}: RunAnalysisPayload): void {
-  startAnalysis({
-    stateCount: stateCount.value,
-    mode: mode.value,
-    collisionMode: collisionMode.value,
-    collisionFixed: collisionFixed.value,
-    from,
-    to,
-    width,
-    height,
-    init: analysisInit,
-    chaosFlux,
-    sparseFill,
-    windowFraction,
-    sourceMode,
-    sampleCount,
-    rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
-    apply: applyAnalysisTag,
-  })
-}
-
-interface RunFieldsAnalysisPayload {
-  from: number
-  to: number
-  width: number
-  height: number
-  init: AnalysisInitMode
-  blockWidth: number
-  blockHeight: number
-  minPercent: number
-  sourceMode: AnalysisSourceMode
-  sampleCount: number
-  tags: string[]
-  targetTag: string
-}
-
-// Rules tagged by the CURRENT (or most recently finished) fields run, kept so
-// "undo found" can untag exactly them (with the tag that run used).
-const fieldsFoundRules = ref<{ parts: RuleParts; snapshot: RuleSnapshot; tag: string }[]>([])
-
-function onRunFieldsAnalysis({
-  from,
-  to,
-  width,
-  height,
-  init: fieldsInit,
-  blockWidth,
-  blockHeight,
-  minPercent,
-  sourceMode,
-  sampleCount,
-  tags: selectedTags,
-  targetTag,
-}: RunFieldsAnalysisPayload): void {
-  const tag = String(targetTag || '').trim() || FIELDS_TAG
-  fieldsFoundRules.value = []
-  const apply = (hasFields: boolean, parts: RuleParts, snapshot: RuleSnapshot): void => {
-    if (hasFields) {
-      fieldsFoundRules.value.push({ parts, snapshot, tag })
-    }
-    applyOrthogonalTag(tag, hasFields, parts, snapshot)
-  }
-  startFieldsAnalysis({
-    stateCount: stateCount.value,
-    mode: mode.value,
-    collisionMode: collisionMode.value,
-    collisionFixed: collisionFixed.value,
-    from,
-    to,
-    width,
-    height,
-    init: fieldsInit,
-    blockWidth,
-    blockHeight,
-    minPercent,
-    sourceMode,
-    sampleCount,
-    rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
-    apply,
-  })
-}
-
-// Untags every rule the last completed fields run had tagged.
-function onUndoFieldsFound(): void {
-  for (const { parts, snapshot, tag } of fieldsFoundRules.value) {
-    applyOrthogonalTag(tag, false, parts, snapshot)
-  }
-  fieldsFoundRules.value = []
-}
-
-// Wipes the given tag off every rule in the library, regardless of which run tagged them.
-function onClearFieldsTag(tagName: string): void {
-  clearTag(String(tagName || '').trim() || FIELDS_TAG)
-  fieldsFoundRules.value = []
-}
-
-interface RunGlidersAnalysisPayload {
-  from: number
-  to: number
-  width: number
-  height: number
-  init: AnalysisInitMode
-  blockWidth: number
-  blockHeight: number
-  maxPeriods: number
-  minShift: number
-  minMatches: number
-  backgroundMin: number
-  spaceshipRepeats: number
-  spaceshipGap: number
-  spaceshipStep: number
-  spaceshipDetections: number
-  condition: GliderCondition
-  sourceMode: AnalysisSourceMode
-  sampleCount: number
-  tags: string[]
-  targetTag: string
-}
-
-// Rules tagged by the CURRENT (or most recently finished) gliders run, kept so
-// "undo found" can untag exactly them (with the tag that run used).
-const glidersFoundRules = ref<{ parts: RuleParts; snapshot: RuleSnapshot; tag: string }[]>([])
-
-function onRunGlidersAnalysis({
-  from,
-  to,
-  width,
-  height,
-  init: glidersInit,
-  blockWidth,
-  blockHeight,
-  maxPeriods,
-  minShift,
-  minMatches,
-  backgroundMin,
-  spaceshipRepeats,
-  spaceshipGap,
-  spaceshipStep,
-  spaceshipDetections,
-  condition,
-  sourceMode,
-  sampleCount,
-  tags: selectedTags,
-  targetTag,
-}: RunGlidersAnalysisPayload): void {
-  const tag = String(targetTag || '').trim() || GLIDERS_TAG
-  glidersFoundRules.value = []
-  const apply = (hasGliders: boolean, parts: RuleParts, snapshot: RuleSnapshot): void => {
-    if (hasGliders) {
-      glidersFoundRules.value.push({ parts, snapshot, tag })
-    }
-    applyOrthogonalTag(tag, hasGliders, parts, snapshot)
-  }
-  startGlidersAnalysis({
-    stateCount: stateCount.value,
-    mode: mode.value,
-    collisionMode: collisionMode.value,
-    collisionFixed: collisionFixed.value,
-    from,
-    to,
-    width,
-    height,
-    init: glidersInit,
-    blockWidth,
-    blockHeight,
-    maxPeriods,
-    minShift,
-    minMatches,
-    backgroundMin,
-    spaceshipRepeats,
-    spaceshipGap,
-    spaceshipStep,
-    spaceshipDetections,
-    condition,
-    sourceMode,
-    sampleCount,
-    rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
-    apply,
-  })
-}
-
-// Untags every rule the last completed gliders run had tagged.
-function onUndoGlidersFound(): void {
-  for (const { parts, snapshot, tag } of glidersFoundRules.value) {
-    applyOrthogonalTag(tag, false, parts, snapshot)
-  }
-  glidersFoundRules.value = []
-}
-
-// Wipes the given tag off every rule in the library, regardless of which run tagged them.
-function onClearGlidersTag(tagName: string): void {
-  clearTag(String(tagName || '').trim() || GLIDERS_TAG)
-  glidersFoundRules.value = []
-}
-
-interface RunCustomSearchPayload {
-  from: number
-  to: number
-  width: number
-  height: number
-  init: AnalysisInitMode
-  negativePatterns: CustomPattern[]
-  sourceMode: AnalysisSourceMode
-  sampleCount: number
-  tags: string[]
-  targetTag: string
-}
-
-// Rules tagged by the CURRENT (or most recently finished) custom-search run, kept
-// so "undo found" can untag exactly them (with the tag that run used) without
-// touching earlier runs' results.
-const customSearchFoundRules = ref<{ parts: RuleParts; snapshot: RuleSnapshot; tag: string }[]>([])
-
-function onRunCustomSearch({
-  from,
-  to,
-  width,
-  height,
-  init: customInit,
-  negativePatterns,
-  sourceMode,
-  sampleCount,
-  tags: selectedTags,
-  targetTag,
-}: RunCustomSearchPayload): void {
-  const tag = String(targetTag || '').trim() || CUSTOM_SEARCH_TAG
-  customSearchFoundRules.value = []
-  const apply = (passes: boolean, parts: RuleParts, snapshot: RuleSnapshot): void => {
-    if (passes) {
-      customSearchFoundRules.value.push({ parts, snapshot, tag })
-    }
-    applyOrthogonalTag(tag, passes, parts, snapshot)
-  }
-  startCustomSearch({
-    stateCount: stateCount.value,
-    mode: mode.value,
-    collisionMode: collisionMode.value,
-    collisionFixed: collisionFixed.value,
-    from,
-    to,
-    width,
-    height,
-    init: customInit,
-    negativePatterns,
-    sourceMode,
-    sampleCount,
-    rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
-    apply,
-  })
-}
-
-// Untags every rule the last completed custom-search run had tagged ("undo found"),
-// using the tag that run actually applied.
-function onUndoCustomSearchFound(): void {
-  for (const { parts, snapshot, tag } of customSearchFoundRules.value) {
-    applyOrthogonalTag(tag, false, parts, snapshot)
-  }
-  customSearchFoundRules.value = []
-}
-
-// Wipes the given tag off every rule in the library, regardless of which run tagged them.
-function onClearCustomSearchTag(tagName: string): void {
-  clearTag(String(tagName || '').trim() || CUSTOM_SEARCH_TAG)
-  customSearchFoundRules.value = []
-}
-
-interface RunLinesAnalysisPayload {
-  from: number
-  to: number
-  width: number
-  height: number
-  init: AnalysisInitMode
-  cutTop: number
-  minBlock: number
-  maxBlock: number
-  blockStep: number
-  lineCount: number
-  ignoreBackground: boolean
-  sourceMode: AnalysisSourceMode
-  sampleCount: number
-  tags: string[]
-  targetTag: string
-}
-
-// Rules tagged by the CURRENT (or most recently finished) no-lines run, kept so
-// "undo found" can untag exactly them (with the tag that run used).
-const linesFoundRules = ref<{ parts: RuleParts; snapshot: RuleSnapshot; tag: string }[]>([])
-
-function onRunLinesAnalysis({
-  from,
-  to,
-  width,
-  height,
-  init: linesInit,
-  cutTop,
-  minBlock,
-  maxBlock,
-  blockStep,
-  lineCount,
-  ignoreBackground,
-  sourceMode,
-  sampleCount,
-  tags: selectedTags,
-  targetTag,
-}: RunLinesAnalysisPayload): void {
-  const tag = String(targetTag || '').trim() || LINES_TAG
-  linesFoundRules.value = []
-  const apply = (noLines: boolean, parts: RuleParts, snapshot: RuleSnapshot): void => {
-    if (noLines) {
-      linesFoundRules.value.push({ parts, snapshot, tag })
-    }
-    applyOrthogonalTag(tag, noLines, parts, snapshot)
-  }
-  startLinesAnalysis({
-    stateCount: stateCount.value,
-    mode: mode.value,
-    collisionMode: collisionMode.value,
-    collisionFixed: collisionFixed.value,
-    from,
-    to,
-    width,
-    height,
-    init: linesInit,
-    cutTop,
-    minBlock,
-    maxBlock,
-    blockStep,
-    lineCount,
-    ignoreBackground,
-    sourceMode,
-    sampleCount,
-    rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
-    apply,
-  })
-}
-
-// Untags every rule the last completed no-lines run had tagged.
-function onUndoLinesFound(): void {
-  for (const { parts, snapshot, tag } of linesFoundRules.value) {
-    applyOrthogonalTag(tag, false, parts, snapshot)
-  }
-  linesFoundRules.value = []
-}
-
-// Wipes the given tag off every rule in the library, regardless of which run tagged them.
-function onClearLinesTag(tagName: string): void {
-  clearTag(String(tagName || '').trim() || LINES_TAG)
-  linesFoundRules.value = []
-}
-
-interface RunChaosAnalysisPayload {
-  from: number
-  to: number
-  width: number
-  height: number
-  init: AnalysisInitMode
-  cutTop: number
-  blockSize: number
-  maxDominant: number
-  sourceMode: AnalysisSourceMode
-  sampleCount: number
-  tags: string[]
-  targetTag: string
-}
-
-// Rules tagged by the CURRENT (or most recently finished) chaos run, kept so
-// "undo found" can untag exactly them (with the tag that run used).
-const chaosFoundRules = ref<{ parts: RuleParts; snapshot: RuleSnapshot; tag: string }[]>([])
-
-function onRunChaosAnalysis({
-  from,
-  to,
-  width,
-  height,
-  init: chaosInit,
-  cutTop,
-  blockSize,
-  maxDominant,
-  sourceMode,
-  sampleCount,
-  tags: selectedTags,
-  targetTag,
-}: RunChaosAnalysisPayload): void {
-  const tag = String(targetTag || '').trim() || CHAOS_TAG
-  chaosFoundRules.value = []
-  const apply = (noChaos: boolean, parts: RuleParts, snapshot: RuleSnapshot): void => {
-    if (noChaos) {
-      chaosFoundRules.value.push({ parts, snapshot, tag })
-    }
-    applyOrthogonalTag(tag, noChaos, parts, snapshot)
-  }
-  startChaosAnalysis({
-    stateCount: stateCount.value,
-    mode: mode.value,
-    collisionMode: collisionMode.value,
-    collisionFixed: collisionFixed.value,
-    from,
-    to,
-    width,
-    height,
-    init: chaosInit,
-    cutTop,
-    blockSize,
-    maxDominant,
-    sourceMode,
-    sampleCount,
-    rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
-    apply,
-  })
-}
-
-// Untags every rule the last completed chaos run had tagged.
-function onUndoChaosFound(): void {
-  for (const { parts, snapshot, tag } of chaosFoundRules.value) {
-    applyOrthogonalTag(tag, false, parts, snapshot)
-  }
-  chaosFoundRules.value = []
-}
-
-// Wipes the given tag off every rule in the library, regardless of which run tagged them.
-function onClearChaosTag(tagName: string): void {
-  clearTag(String(tagName || '').trim() || CHAOS_TAG)
-  chaosFoundRules.value = []
-}
-
-interface RunSubAnalysisPayload {
-  sourceMode: AnalysisSourceMode
-  from: number
-  to: number
-  sampleCount: number
-  tags: string[]
-  init: AnalysisInitMode
-  height: number
-  targetTag: string
-  options: SubAnalyzeOptions
-}
-
-// Rules tagged by the CURRENT (or most recently finished) sub-analysis run, kept so
-// "undo found" can untag exactly them (with the tag that run used).
-const subFoundRules = ref<{ parts: RuleParts; snapshot: RuleSnapshot; tag: string }[]>([])
-
-function onRunSubAnalysis({
-  sourceMode,
-  from,
-  to,
-  sampleCount,
-  tags: selectedTags,
-  init: subInit,
-  height,
-  targetTag,
-  options,
-}: RunSubAnalysisPayload): void {
-  const tag = String(targetTag || '').trim() || LARGE_STRUCTURES_TAG
-  subFoundRules.value = []
-  const apply = (hasLargeStructures: boolean, parts: RuleParts, snapshot: RuleSnapshot): void => {
-    if (hasLargeStructures) {
-      subFoundRules.value.push({ parts, snapshot, tag })
-    }
-    applyOrthogonalTag(tag, hasLargeStructures, parts, snapshot)
-  }
-  startSubAnalysis({
-    stateCount: stateCount.value,
-    mode: mode.value,
-    collisionMode: collisionMode.value,
-    collisionFixed: collisionFixed.value,
-    sourceMode,
-    from,
-    to,
-    sampleCount,
-    init: subInit,
-    height,
-    rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
-    options,
-    apply,
-  })
-}
-
-// Untags every rule the last completed sub-analysis run had tagged.
-function onUndoSubFound(): void {
-  for (const { parts, snapshot, tag } of subFoundRules.value) {
-    applyOrthogonalTag(tag, false, parts, snapshot)
-  }
-  subFoundRules.value = []
-}
-
-// Wipes the given tag off every rule in the library, regardless of which run tagged them.
-function onClearSubTag(tagName: string): void {
-  clearTag(String(tagName || '').trim() || LARGE_STRUCTURES_TAG)
-  subFoundRules.value = []
-}
-
-function onSelectSubRule(snapshot: RuleSnapshot): void {
-  applyRuleSnapshot(snapshot)
-}
+const {
+  onRunAnalysis,
+  onRunFieldsAnalysis,
+  onUndoFieldsFound,
+  onClearFieldsTag,
+  fieldsFoundRules,
+  onRunGlidersAnalysis,
+  onUndoGlidersFound,
+  onClearGlidersTag,
+  glidersFoundRules,
+  onRunCustomSearch,
+  onUndoCustomSearchFound,
+  onClearCustomSearchTag,
+  customSearchFoundRules,
+  onRunLinesAnalysis,
+  onUndoLinesFound,
+  onClearLinesTag,
+  linesFoundRules,
+  onRunChaosAnalysis,
+  onUndoChaosFound,
+  onClearChaosTag,
+  chaosFoundRules,
+  onRunSubAnalysis,
+  onUndoSubFound,
+  onClearSubTag,
+  subFoundRules,
+  onSelectSubRule,
+} = useAnalysisRunners({
+  stateCount,
+  mode,
+  collisionMode,
+  collisionFixed,
+  applyRuleSnapshot,
+  tags: tagsApi,
+  analysis: analysisApi,
+  fields: fieldsApi,
+  gliders: glidersApi,
+  customSearch: customSearchApi,
+  lines: linesApi,
+  chaos: chaosApi,
+  sub: subApi,
+})
 </script>
 
 <template>
