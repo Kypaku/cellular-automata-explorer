@@ -35,9 +35,10 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
   const height = Math.max(8, Math.floor(options.height))
   const init: AnalysisInitMode = options.init === 'single' ? 'single' : 'random'
   const states = normalizeStateCount(parts.stateCount)
-  const config = getConfig(states)
+  const config = getConfig(states, parts.neighborhood)
+  const radius = config.radius
 
-  const sums = parts.mode === 'totalistic' ? totalisticTable(parts.code, states) : null
+  const sums = parts.mode === 'totalistic' ? totalisticTable(parts.code, states, config.neighborhood) : null
   const ruleStr =
     parts.mode === 'totalistic'
       ? null
@@ -89,12 +90,19 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
 
     const next = new Uint8Array(width)
     for (let k = 0; k < width; k++) {
-      const left = row[(k - 1 + width) % width]
-      const center = row[k]
-      const right = row[(k + 1) % width]
-      next[k] = sums
-        ? sums[left + center + right]
-        : (ruleStr as string).charCodeAt(left * states * states + center * states + right) - 48
+      if (sums) {
+        let sum = 0
+        for (let d = -radius; d <= radius; d++) {
+          sum += row[(k + d + width) % width]
+        }
+        next[k] = sums[sum]
+      } else {
+        let index = 0
+        for (let d = -radius; d <= radius; d++) {
+          index = index * states + row[(k + d + width) % width]
+        }
+        next[k] = (ruleStr as string).charCodeAt(index) - 48
+      }
     }
     prevRow = row
     row = next

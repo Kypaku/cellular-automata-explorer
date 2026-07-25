@@ -19,6 +19,7 @@ export type ApplyFields = (hasFields: boolean, parts: RuleParts, snapshot: RuleS
 export interface FieldsAnalysisStartParams {
   stateCount: number
   mode: RuleMode
+  neighborhood?: number
   collisionMode?: CollisionMode
   collisionFixed?: number
   from: number
@@ -72,8 +73,8 @@ export function useRuleFieldsAnalysis() {
     const to = Math.max(from, Math.floor(params.to))
     const ruleItems = params.sourceMode === 'tags' ? params.rules || [] : null
     const randomLocalRules =
-      params.sourceMode === 'random' && mode === 'local' && localCodeExceedsSafeInteger(stateCount)
-        ? pickRandomLocalRules(stateCount, params.sampleCount || 1)
+      params.sourceMode === 'random' && mode === 'local' && localCodeExceedsSafeInteger(stateCount, params.neighborhood)
+        ? pickRandomLocalRules(stateCount, params.sampleCount || 1, params.neighborhood)
         : null
     const randomCodes =
       params.sourceMode === 'random' && !randomLocalRules
@@ -117,6 +118,7 @@ export function useRuleFieldsAnalysis() {
             mode,
             code,
             localRule: localRuleOverride,
+            neighborhood: params.neighborhood,
             collisionMode: params.collisionMode,
             collisionFixed: params.collisionFixed,
           }

@@ -20,6 +20,7 @@ export type ApplyCustomSearch = (passes: boolean, parts: RuleParts, snapshot: Ru
 export interface CustomSearchStartParams {
   stateCount: number
   mode: RuleMode
+  neighborhood?: number
   collisionMode?: CollisionMode
   collisionFixed?: number
   from: number
@@ -71,8 +72,8 @@ export function useRuleCustomSearchAnalysis() {
     const to = Math.max(from, Math.floor(params.to))
     const ruleItems = params.sourceMode === 'tags' ? params.rules || [] : null
     const randomLocalRules =
-      params.sourceMode === 'random' && mode === 'local' && localCodeExceedsSafeInteger(stateCount)
-        ? pickRandomLocalRules(stateCount, params.sampleCount || 1)
+      params.sourceMode === 'random' && mode === 'local' && localCodeExceedsSafeInteger(stateCount, params.neighborhood)
+        ? pickRandomLocalRules(stateCount, params.sampleCount || 1, params.neighborhood)
         : null
     const randomCodes =
       params.sourceMode === 'random' && !randomLocalRules
@@ -116,6 +117,7 @@ export function useRuleCustomSearchAnalysis() {
             mode,
             code,
             localRule: localRuleOverride,
+            neighborhood: params.neighborhood,
             collisionMode: params.collisionMode,
             collisionFixed: params.collisionFixed,
           }

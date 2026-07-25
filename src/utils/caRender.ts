@@ -71,6 +71,7 @@ export function evolveStep(
 ): Uint8Array {
   const nextRow = new Uint8Array(width)
   const states = config.states
+  const radius = config.radius
   const merge: CollisionMode = collisionMode || 'sum'
   const fixed = collisionFixed || 0
   for (let k = 0; k < width; k++) {
@@ -79,9 +80,20 @@ export function evolveStep(
     const right = row[(k + 1) % width]
     let value: number
     if (mode === 'totalistic') {
-      value = (sums as number[])[left + center + right]
+      // Sum the `neighborhood` cells centered on k (radius on each side).
+      let sum = 0
+      for (let d = -radius; d <= radius; d++) {
+        sum += row[(k + d + width) % width]
+      }
+      value = (sums as number[])[sum]
     } else if (mode === 'local') {
-      value = explicitRule.charCodeAt(left * states * states + center * states + right) - 48
+      // Encode the `neighborhood` cells as a base-`states` index, leftmost cell
+      // most-significant (radius === 1 reduces to left*states^2+center*states+right).
+      let index = 0
+      for (let d = -radius; d <= radius; d++) {
+        index = index * states + row[(k + d + width) % width]
+      }
+      value = explicitRule.charCodeAt(index) - 48
     } else {
       // Descendants: each child gathers up to 3 emitted contributions. Background
       // (state 0) emits nothing; a live parent's triple lives at (state-1)*3 in

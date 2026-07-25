@@ -45,6 +45,7 @@ const {
   W,
   mode,
   stateCount,
+  neighborhood,
   init,
   noise,
   extraRows,
@@ -79,6 +80,7 @@ const {
   setInit,
   setMode,
   setStateCount,
+  setNeighborhood,
   onCodeSliderInput,
   onCodeNumberInput,
   onHeightSliderInput,
@@ -834,37 +836,39 @@ function onSelectSubRule(snapshot: RuleSnapshot): void {
     <div class="ca-main">
     <div class="ca-row">
 
-      <RuleControls
-        :state-count="stateCount"
-        :mode="mode"
-        :code-value="codeValue"
-        :code-max="codeMax"
-        :show-code-control="showCodeControl"
-        :slider-label-text="sliderLabelText"
-        :rule-label-text="ruleLabelText"
-        :rule-status-text="ruleStatusText"
-        :rule-input-value="ruleInputValue"
-        :emission-label-text="emissionLabelText"
-        :emission-status-text="emissionStatusText"
-        :emission-input-value="emissionInputValue"
-        :collision-mode="collisionMode"
-        :collision-fixed="collisionFixed"
-        :energy-enabled="energyEnabled"
-        :initial-energy="initialEnergy"
-        @set-state-count="setStateCount"
-        @set-mode="setMode"
-        @code-slider-input="onCodeSliderInput"
-        @code-number-input="onCodeNumberInput"
-        @code-number-change="refresh"
-        @rule-input="onRuleInput"
-        @emission-input="onEmissionInput"
-        @set-collision-mode="setCollisionMode"
-        @collision-fixed-input="onCollisionFixedInput"
-        @set-energy-enabled="setEnergyEnabled"
-        @initial-energy-input="onInitialEnergyInput"
-        @random-rule="onRandomRule"
-        @regen="run"
-      />
+        <RuleControls
+          :state-count="stateCount"
+          :mode="mode"
+          :neighborhood="neighborhood"
+          :code-value="codeValue"
+          :code-max="codeMax"
+          :show-code-control="showCodeControl"
+          :slider-label-text="sliderLabelText"
+          :rule-label-text="ruleLabelText"
+          :rule-status-text="ruleStatusText"
+          :rule-input-value="ruleInputValue"
+          :emission-label-text="emissionLabelText"
+          :emission-status-text="emissionStatusText"
+          :emission-input-value="emissionInputValue"
+          :collision-mode="collisionMode"
+          :collision-fixed="collisionFixed"
+          :energy-enabled="energyEnabled"
+          :initial-energy="initialEnergy"
+          @set-state-count="setStateCount"
+          @set-mode="setMode"
+          @set-neighborhood="setNeighborhood"
+          @code-slider-input="onCodeSliderInput"
+          @code-number-input="onCodeNumberInput"
+          @code-number-change="refresh"
+          @rule-input="onRuleInput"
+          @emission-input="onEmissionInput"
+          @set-collision-mode="setCollisionMode"
+          @collision-fixed-input="onCollisionFixedInput"
+          @set-energy-enabled="setEnergyEnabled"
+          @initial-energy-input="onInitialEnergyInput"
+          @random-rule="onRandomRule"
+          @regen="run"
+        />
     </div>
 
     <div class="ca-row">
@@ -904,12 +908,14 @@ function onSelectSubRule(snapshot: RuleSnapshot): void {
       @cell-click="onLegendCellClick"
     />
 
-    <canvas
-      ref="canvasRef"
-      class="ca-canvas"
-      role="img"
-      aria-label="Spatiotemporal diagram of the cellular automaton"
-    ></canvas>
+    <!-- <div class="ca-canvas-scroll"> -->
+      <canvas
+        ref="canvasRef"
+        class="ca-canvas"
+        role="img"
+        aria-label="Spatiotemporal diagram of the cellular automaton"
+      ></canvas>
+    <!-- </div> -->
 
     <div class="ca-row">
       <div class="ca-control">

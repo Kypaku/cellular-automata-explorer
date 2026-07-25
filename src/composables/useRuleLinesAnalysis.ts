@@ -19,6 +19,7 @@ export type ApplyLines = (noLines: boolean, parts: RuleParts, snapshot: RuleSnap
 export interface LinesAnalysisStartParams {
   stateCount: number
   mode: RuleMode
+  neighborhood?: number
   collisionMode?: CollisionMode
   collisionFixed?: number
   from: number
@@ -88,8 +89,8 @@ export function useRuleLinesAnalysis() {
     const to = Math.max(from, Math.floor(params.to))
     const ruleItems = params.sourceMode === 'tags' ? params.rules || [] : null
     const randomLocalRules =
-      params.sourceMode === 'random' && mode === 'local' && localCodeExceedsSafeInteger(stateCount)
-        ? pickRandomLocalRules(stateCount, params.sampleCount || 1)
+      params.sourceMode === 'random' && mode === 'local' && localCodeExceedsSafeInteger(stateCount, params.neighborhood)
+        ? pickRandomLocalRules(stateCount, params.sampleCount || 1, params.neighborhood)
         : null
     const randomCodes =
       params.sourceMode === 'random' && !randomLocalRules
@@ -133,6 +134,7 @@ export function useRuleLinesAnalysis() {
             mode,
             code,
             localRule: localRuleOverride,
+            neighborhood: params.neighborhood,
             collisionMode: params.collisionMode,
             collisionFixed: params.collisionFixed,
           }

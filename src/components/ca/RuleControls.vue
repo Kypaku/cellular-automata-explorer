@@ -4,6 +4,7 @@ import { computed } from 'vue'
 const props = defineProps<{
   stateCount: number
   mode: string
+  neighborhood: number
   codeValue: number
   codeMax: number
   showCodeControl: boolean
@@ -20,13 +21,14 @@ const props = defineProps<{
   initialEnergy: number
 }>()
 
-const ruleMaxLength = computed(() => Math.pow(props.stateCount, 3))
+const ruleMaxLength = computed(() => Math.pow(props.stateCount, props.neighborhood))
 const emissionMaxLength = computed(() => 3 * (props.stateCount - 1))
 const maxFixed = computed(() => props.stateCount - 1)
 
 const emit = defineEmits([
   'set-state-count',
   'set-mode',
+  'set-neighborhood',
   'code-slider-input',
   'code-number-input',
   'code-number-change',
@@ -62,6 +64,15 @@ const emit = defineEmits([
         <button type="button" :class="{ on: mode === 'local' }" @click="emit('set-mode', 'local')">by templates</button>
         <button type="button" :class="{ on: mode === 'descendants' }" @click="emit('set-mode', 'descendants')">by descendants</button>
       </span>
+
+      <template v-if="mode !== 'descendants'">
+        <span class="ca-label ml-4 mr-1">Neighborhood</span>
+        <span class="ca-seg">
+          <button type="button" :class="{ on: neighborhood === 3 }" @click="emit('set-neighborhood', 3)">3 cells</button>
+          <button type="button" :class="{ on: neighborhood === 5 }" @click="emit('set-neighborhood', 5)">5 cells</button>
+          <button type="button" :class="{ on: neighborhood === 7 }" @click="emit('set-neighborhood', 7)">7 cells</button>
+        </span>
+      </template>
     
       <div class="ca-panel mt-2">
         <div class="ca-control" v-if="showCodeControl">

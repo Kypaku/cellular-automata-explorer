@@ -21,9 +21,10 @@ export function evolveRows(parts: RuleParts, options: EvolveOptions): EvolveResu
   const keep = Math.max(1, Math.min(height, Math.floor(options.keep || height)))
   const init: AnalysisInitMode = options.init === 'single' ? 'single' : 'random'
   const states = normalizeStateCount(parts.stateCount)
-  const config = getConfig(states)
+  const config = getConfig(states, parts.neighborhood)
+  const radius = config.radius
 
-  const sums = parts.mode === 'totalistic' ? totalisticTable(parts.code, states) : null
+  const sums = parts.mode === 'totalistic' ? totalisticTable(parts.code, states, config.neighborhood) : null
   const ruleStr =
     parts.mode === 'local'
       ? padRight(sanitizeStateString(parts.localRule, config.localDigits, states), config.localDigits)
@@ -60,9 +61,17 @@ export function evolveRows(parts: RuleParts, options: EvolveOptions): EvolveResu
       const center = row[k]
       const right = row[(k + 1) % width]
       if (sums) {
-        next[k] = sums[left + center + right]
+        let sum = 0
+        for (let d = -radius; d <= radius; d++) {
+          sum += row[(k + d + width) % width]
+        }
+        next[k] = sums[sum]
       } else if (ruleStr) {
-        next[k] = ruleStr.charCodeAt(left * states * states + center * states + right) - 48
+        let index = 0
+        for (let d = -radius; d <= radius; d++) {
+          index = index * states + row[(k + d + width) % width]
+        }
+        next[k] = ruleStr.charCodeAt(index) - 48
       } else {
         const em = emission as number[]
         const a = left === 0 ? 0 : em[(left - 1) * 3 + 2]

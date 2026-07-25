@@ -11,6 +11,7 @@ import {
   localRuleToCode,
   codeToLocalRule,
   normalizeStateCount,
+  normalizeNeighborhood,
   localCodeExceedsSafeInteger,
   cycleLocalRuleDigit,
   cycleTotalisticDigit,
@@ -52,6 +53,7 @@ export function useCellularAutomaton() {
   const W = ref(CA_WIDTH)
   const mode = ref<RuleMode>('local') // 'totalistic' | 'local'
   const stateCount = ref(2) // 2 | 3 | 4 | 5
+  const neighborhood = ref(3) // 3 | 5 | 7 cells read from the previous row (totalistic/local only)
   const init = ref<InitMode>('random') // 'single' | 'random' | 'custom'
   const noise = ref(0) // 0-100, % of cells on each step get a random value against the rule
   const extraRows = ref(50) // how many more generations "continue simulation" adds
@@ -111,7 +113,7 @@ export function useCellularAutomaton() {
   const showCodeControl = computed(
     () =>
       mode.value === 'totalistic' ||
-      (mode.value === 'local' && !localCodeExceedsSafeInteger(stateCount.value))
+      (mode.value === 'local' && !localCodeExceedsSafeInteger(stateCount.value, neighborhood.value))
   )
 
   const heightStatusText = computed(() => `${H.value} rows`)
@@ -133,7 +135,7 @@ export function useCellularAutomaton() {
   })
 
   function activeConfig(): CaConfig {
-    return getConfig(stateCount.value)
+    return getConfig(stateCount.value, neighborhood.value)
   }
 
   function currentLocalRule(): string {
@@ -204,7 +206,7 @@ export function useCellularAutomaton() {
   function activeCodeValue(): number {
     return mode.value === 'totalistic'
       ? totalisticCodes[stateCount.value]
-      : localRuleToCode(currentLocalRule(), stateCount.value)
+      : localRuleToCode(currentLocalRule(), stateCount.value, neighborhood.value)
   }
 
   function setActiveCode(value: number): void {
@@ -214,7 +216,7 @@ export function useCellularAutomaton() {
       syncLocalRule(false)
       return
     }
-    localRules[stateCount.value] = codeToLocalRule(nextValue, stateCount.value)
+    localRules[stateCount.value] = codeToLocalRule(nextValue, stateCount.value, neighborhood.value)
     localRuleDirty[stateCount.value] = true
     ruleInputValue.value = localRules[stateCount.value]
   }
@@ -262,7 +264,11 @@ export function useCellularAutomaton() {
 
   function syncLocalRule(force: boolean): void {
     if (force || !localRuleDirty[stateCount.value]) {
-      localRules[stateCount.value] = buildLocalRuleFromTotalistic(totalisticCodes[stateCount.value], stateCount.value)
+      localRules[stateCount.value] = buildLocalRuleFromTotalistic(
+        totalisticCodes[stateCount.value],
+        stateCount.value,
+        neighborhood.value
+      )
     }
     ruleInputValue.value = localRules[stateCount.value]
     updateRuleStatus()
@@ -281,9 +287,9 @@ export function useCellularAutomaton() {
       ' digits from 0 to ' +
       config.maxDigit +
       ' in order ' +
-      toBaseN(0, 3, config.states) +
+      toBaseN(0, config.neighborhood, config.states) +
       '..' +
-      toBaseN(config.localDigits - 1, 3, config.states)
+      toBaseN(config.localDigits - 1, config.neighborhood, config.states)
     ruleStatusText.value =
       clean.length === config.localDigits
         ? `${config.localDigits}/${config.localDigits} positions filled`
@@ -317,7 +323,7 @@ export function useCellularAutomaton() {
     const items: LegendItem[] = []
     if (mode.value === 'totalistic') {
       keyText.value = 'neighbor sum map -> new state'
-      const sums = totalisticTable(totalisticCodes[stateCount.value], stateCount.value)
+      const sums = totalisticTable(totalisticCodes[stateCount.value], stateCount.value, neighborhood.value)
       for (let sum = 0; sum < config.totalisticDigits; sum++) {
         items.push({ color: CA_COLORS[sums[sum]], caption: `S=${sum}` })
       }
@@ -337,7 +343,7 @@ export function useCellularAutomaton() {
       for (let index = 0; index < config.localDigits; index++) {
         items.push({
           color: CA_COLORS[rule.charCodeAt(index) - 48],
-          caption: `${toBaseN(index, 3, config.states)}->${rule.charAt(index)}`,
+          caption: `${toBaseN(index, config.neighborhood, config.states)}->${rule.charAt(index)}`,
         })
       }
     }
@@ -360,7 +366,7 @@ export function useCellularAutomaton() {
     canvas.width = W.value * CA_PIXEL_SIZE
     canvas.height = H.value * CA_PIXEL_SIZE
     const config = activeConfig()
-    const sums = mode.value === 'totalistic' ? totalisticTable(totalisticCodes[stateCount.value], stateCount.value) : null
+    const sums = mode.value === 'totalistic' ? totalisticTable(totalisticCodes[stateCount.value], stateCount.value, neighborhood.value) : null
     const explicitRule = mode.value === 'local' ? currentLocalRule() : ''
     const emission = mode.value === 'descendants' ? currentEmissionTable() : null
     const collisionModeValue = collisionMode.value
@@ -442,7 +448,7 @@ export function useCellularAutomaton() {
     }
     const addRows = clampExtraRows(extraRows.value)
     const config = activeConfig()
-    const sums = mode.value === 'totalistic' ? totalisticTable(totalisticCodes[stateCount.value], stateCount.value) : null
+    const sums = mode.value === 'totalistic' ? totalisticTable(totalisticCodes[stateCount.value], stateCount.value, neighborhood.value) : null
     const explicitRule = mode.value === 'local' ? currentLocalRule() : ''
     const emission = mode.value === 'descendants' ? currentEmissionTable() : null
     const collisionModeValue = collisionMode.value
@@ -593,7 +599,12 @@ export function useCellularAutomaton() {
    */
   function onLegendCellClick(index: number): void {
     if (mode.value === 'totalistic') {
-      totalisticCodes[stateCount.value] = cycleTotalisticDigit(totalisticCodes[stateCount.value], stateCount.value, index)
+      totalisticCodes[stateCount.value] = cycleTotalisticDigit(
+        totalisticCodes[stateCount.value],
+        stateCount.value,
+        index,
+        neighborhood.value
+      )
       syncLocalRule(false)
     } else if (mode.value === 'descendants') {
       const nextEmission = cycleEmissionDigit(currentEmissionRule(), stateCount.value, index)
@@ -601,7 +612,7 @@ export function useCellularAutomaton() {
       emissionRules[stateCount.value] = nextEmission
       updateDescendantsStatus()
     } else {
-      const nextRule = cycleLocalRuleDigit(currentLocalRule(), stateCount.value, index)
+      const nextRule = cycleLocalRuleDigit(currentLocalRule(), stateCount.value, index, neighborhood.value)
       ruleInputValue.value = nextRule
       localRules[stateCount.value] = nextRule
       localRuleDirty[stateCount.value] = true
@@ -711,6 +722,27 @@ export function useCellularAutomaton() {
     run()
   }
 
+  /**
+   * Switches the neighborhood size (3, 5 or 7 cells read from the previous row)
+   * for totalistic/local rules. Rebuilds the local rule from the current
+   * totalistic code (unless the user has edited it by hand) and clamps the
+   * totalistic code into the new range, then re-renders.
+   */
+  function setNeighborhood(next: number): void {
+    const n = normalizeNeighborhood(next)
+    if (n === neighborhood.value) {
+      return
+    }
+    storeCurrentRule()
+    neighborhood.value = n
+    const config = activeConfig()
+    if (totalisticCodes[stateCount.value] > config.totalisticMax) {
+      totalisticCodes[stateCount.value] = config.totalisticMax
+    }
+    syncLocalRule(false)
+    refresh()
+  }
+
   function syncDescendantsInputs(): void {
     const states = stateCount.value
     if (!emissionRules[states]) {
@@ -745,7 +777,7 @@ export function useCellularAutomaton() {
 
   function init3AndRefresh(): void {
     ;[2, 3, 4, 5].forEach((count) => {
-      localRules[count] = buildLocalRuleFromTotalistic(totalisticCodes[count], count)
+      localRules[count] = buildLocalRuleFromTotalistic(totalisticCodes[count], count, neighborhood.value)
     })
     ruleInputValue.value = localRules[stateCount.value]
     emissionInputValue.value = emissionRules[stateCount.value]
@@ -761,6 +793,7 @@ export function useCellularAutomaton() {
       mode: mode.value,
       code: totalisticCodes[stateCount.value],
       localRule: localRules[stateCount.value],
+      neighborhood: neighborhood.value,
       emissionRule: emissionRules[stateCount.value],
       collisionMode: collisionMode.value,
       collisionFixed: currentCollisionFixed(),
@@ -788,9 +821,10 @@ export function useCellularAutomaton() {
       storeCurrentSeed()
     }
     stateCount.value = nextStateCount
+    neighborhood.value = normalizeNeighborhood(snapshot.neighborhood)
     totalisticCodes[nextStateCount] = snapshot.code || 0
     localRules[nextStateCount] =
-      snapshot.localRule || buildLocalRuleFromTotalistic(totalisticCodes[nextStateCount], nextStateCount)
+      snapshot.localRule || buildLocalRuleFromTotalistic(totalisticCodes[nextStateCount], nextStateCount, neighborhood.value)
     localRuleDirty[nextStateCount] = true
     emissionRules[nextStateCount] = sanitizeEmissionRule(
       snapshot.emissionRule || defaultEmissionRule(nextStateCount),
@@ -816,7 +850,7 @@ export function useCellularAutomaton() {
   function getRenderContext(): RenderContext {
     const config = activeConfig()
     const sums =
-      mode.value === 'totalistic' ? totalisticTable(totalisticCodes[stateCount.value], stateCount.value) : null
+      mode.value === 'totalistic' ? totalisticTable(totalisticCodes[stateCount.value], stateCount.value, neighborhood.value) : null
     const explicitRule = mode.value === 'local' ? currentLocalRule() : ''
     const emission = mode.value === 'descendants' ? currentEmissionTable() : null
     return {
@@ -844,6 +878,7 @@ export function useCellularAutomaton() {
     W,
     mode,
     stateCount,
+    neighborhood,
     init,
     noise,
     extraRows,
@@ -879,6 +914,7 @@ export function useCellularAutomaton() {
     setInit,
     setMode,
     setStateCount,
+    setNeighborhood,
     onCodeSliderInput,
     onCodeNumberInput,
     onHeightSliderInput,
