@@ -35,10 +35,11 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
   const height = Math.max(8, Math.floor(options.height))
   const init: AnalysisInitMode = options.init === 'single' ? 'single' : 'random'
   const states = normalizeStateCount(parts.stateCount)
-  const config = getConfig(states, parts.neighborhood)
+  const config = getConfig(states, parts.neighborhood, parts.depth)
   const radius = config.radius
+  const depth = config.depth
 
-  const sums = parts.mode === 'totalistic' ? totalisticTable(parts.code, states, config.neighborhood) : null
+  const sums = parts.mode === 'totalistic' ? totalisticTable(parts.code, states, config.neighborhood, config.depth) : null
   const ruleStr =
     parts.mode === 'totalistic'
       ? null
@@ -49,6 +50,13 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
 
   let row = buildInitialRow(width, states, init, rand)
   let prevRow: Uint8Array | null = null
+  // Rolling window of the last `depth` rows (oldest first). Prior rows are zeros
+  // for single seeds and random rows for random seeds.
+  const window: Uint8Array[] = []
+  for (let i = 0; i < depth - 1; i++) {
+    window.push(init === 'single' ? new Uint8Array(width) : buildInitialRow(width, states, 'random', rand))
+  }
+  window.push(row)
   const seen = new Map<string, number>()
   const densities = new Array<number>(height)
   const fluxes = new Array<number>(height)
@@ -92,20 +100,31 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
     for (let k = 0; k < width; k++) {
       if (sums) {
         let sum = 0
-        for (let d = -radius; d <= radius; d++) {
-          sum += row[(k + d + width) % width]
+        for (let t = 0; t < depth; t++) {
+          const r = window[t]
+          for (let d = -radius; d <= radius; d++) {
+            sum += r[(k + d + width) % width]
+          }
         }
         next[k] = sums[sum]
       } else {
         let index = 0
-        for (let d = -radius; d <= radius; d++) {
-          index = index * states + row[(k + d + width) % width]
+        for (let t = 0; t < depth; t++) {
+          const r = window[t]
+          for (let d = -radius; d <= radius; d++) {
+            index = index * states + r[(k + d + width) % width]
+          }
         }
-        next[k] = (ruleStr as string).charCodeAt(index) - 48
+        const ch = (ruleStr as string).charCodeAt(index)
+        next[k] = ch >= 48 ? ch - 48 : 0
       }
     }
     prevRow = row
     row = next
+    window.push(next)
+    if (window.length > depth) {
+      window.shift()
+    }
   }
 
   // No exact repeat within H: fall back to statistics over the last window.

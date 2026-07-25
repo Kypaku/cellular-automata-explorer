@@ -21,10 +21,11 @@ export function evolveRows(parts: RuleParts, options: EvolveOptions): EvolveResu
   const keep = Math.max(1, Math.min(height, Math.floor(options.keep || height)))
   const init: AnalysisInitMode = options.init === 'single' ? 'single' : 'random'
   const states = normalizeStateCount(parts.stateCount)
-  const config = getConfig(states, parts.neighborhood)
+  const config = getConfig(states, parts.neighborhood, parts.depth)
   const radius = config.radius
+  const depth = config.depth
 
-  const sums = parts.mode === 'totalistic' ? totalisticTable(parts.code, states, config.neighborhood) : null
+  const sums = parts.mode === 'totalistic' ? totalisticTable(parts.code, states, config.neighborhood, config.depth) : null
   const ruleStr =
     parts.mode === 'local'
       ? padRight(sanitizeStateString(parts.localRule, config.localDigits, states), config.localDigits)
@@ -48,30 +49,47 @@ export function evolveRows(parts: RuleParts, options: EvolveOptions): EvolveResu
   const rows: Uint8Array[] = []
   const firstKept = height - keep
 
+  // Rolling window of the last `depth` rows (oldest first, newest last). Prior
+  // rows above the diagram are zeros for single-cell seeds and random rows for
+  // random seeds, matching the interactive renderer.
+  const window: Uint8Array[] = []
+  for (let i = 0; i < depth - 1; i++) {
+    window.push(init === 'single' ? new Uint8Array(width) : buildInitialRow(width, states, 'random', rand))
+  }
+  window.push(row)
+
   for (let y = 0; y < height; y++) {
+    const cur = window[window.length - 1]
     if (y >= firstKept) {
-      rows.push(row.slice())
+      rows.push(cur.slice())
     }
     if (y === height - 1) {
       break
     }
     const next = new Uint8Array(width)
     for (let k = 0; k < width; k++) {
-      const left = row[(k - 1 + width) % width]
-      const center = row[k]
-      const right = row[(k + 1) % width]
+      const left = cur[(k - 1 + width) % width]
+      const center = cur[k]
+      const right = cur[(k + 1) % width]
       if (sums) {
         let sum = 0
-        for (let d = -radius; d <= radius; d++) {
-          sum += row[(k + d + width) % width]
+        for (let t = 0; t < depth; t++) {
+          const r = window[t]
+          for (let d = -radius; d <= radius; d++) {
+            sum += r[(k + d + width) % width]
+          }
         }
         next[k] = sums[sum]
       } else if (ruleStr) {
         let index = 0
-        for (let d = -radius; d <= radius; d++) {
-          index = index * states + row[(k + d + width) % width]
+        for (let t = 0; t < depth; t++) {
+          const r = window[t]
+          for (let d = -radius; d <= radius; d++) {
+            index = index * states + r[(k + d + width) % width]
+          }
         }
-        next[k] = ruleStr.charCodeAt(index) - 48
+        const ch = ruleStr.charCodeAt(index)
+        next[k] = ch >= 48 ? ch - 48 : 0
       } else {
         const em = emission as number[]
         const a = left === 0 ? 0 : em[(left - 1) * 3 + 2]
@@ -80,7 +98,8 @@ export function evolveRows(parts: RuleParts, options: EvolveOptions): EvolveResu
         next[k] = resolveCollision(a, b, c, states, collisionMode, collisionFixed, rand)
       }
     }
-    row = next
+    window.push(next)
+    window.shift()
   }
   return { rows, states }
 }

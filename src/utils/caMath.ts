@@ -15,6 +15,31 @@ export function normalizeNeighborhood(value: unknown): number {
   return n === 5 || n === 7 ? n : 3
 }
 
+/** Largest number of previous rows a totalistic/local rule may depend on. */
+export const MAX_DEPTH = 8
+
+/** Clamps an arbitrary value to a supported temporal depth (1..MAX_DEPTH), defaulting to 1. */
+export function normalizeDepth(value: unknown): number {
+  const n = Math.floor(Number(value))
+  if (!Number.isFinite(n) || n < 1) {
+    return 1
+  }
+  return Math.min(MAX_DEPTH, n)
+}
+
+/**
+ * Above this local-rule length we no longer materialize the full digit string
+ * (it would be too large to build/hold/edit). Multi-row local rules with many
+ * cells can reach `states^(neighborhood*depth)` digits; past this cap the rule
+ * string is left un-expanded and unfilled neighborhoods are treated as state 0.
+ */
+export const LOCAL_MATERIALIZE_LIMIT = 200000
+
+/** True when a config's local rule string (`localDigits`) is small enough to build/hold. */
+export function canMaterializeLocal(config: CaConfig): boolean {
+  return config.localDigits <= LOCAL_MATERIALIZE_LIMIT
+}
+
 /** Builds classifier `parts` (rule identity) from a saved rule snapshot. */
 export function partsFromSnapshot(snapshot: RuleSnapshot): RuleParts {
   const stateCount = normalizeStateCount(snapshot.stateCount)
@@ -30,28 +55,35 @@ export function partsFromSnapshot(snapshot: RuleSnapshot): RuleParts {
     }
   }
   const neighborhood = normalizeNeighborhood(snapshot.neighborhood)
+  const depth = normalizeDepth(snapshot.depth)
   return snapshot.mode === 'totalistic'
-    ? { stateCount, mode: 'totalistic', code: snapshot.code || 0, localRule: '', neighborhood }
-    : { stateCount, mode: 'local', code: 0, localRule: snapshot.localRule || '', neighborhood }
+    ? { stateCount, mode: 'totalistic', code: snapshot.code || 0, localRule: '', neighborhood, depth }
+    : { stateCount, mode: 'local', code: 0, localRule: snapshot.localRule || '', neighborhood, depth }
 }
 
 /**
- * Derives all the size/range values that depend on the number of states and
- * the neighborhood size (how many cells of the previous row the rule reads).
+ * Derives all the size/range values that depend on the number of states, the
+ * neighborhood size (how many cells of each row the rule reads) and the depth
+ * (how many previous rows the rule reads).
  * @param states number of cell states (2-5)
- * @param neighborhood cells read from the previous row (3, 5 or 7; default 3)
+ * @param neighborhood cells read from each row (3, 5 or 7; default 3)
+ * @param depth previous rows the rule reads (1..MAX_DEPTH; default 1)
  */
-export function getConfig(states: number, neighborhood: number = 3): CaConfig {
+export function getConfig(states: number, neighborhood: number = 3, depth: number = 1): CaConfig {
   const cells = normalizeNeighborhood(neighborhood)
-  const totalisticDigits = cells * (states - 1) + 1
+  const d = normalizeDepth(depth)
+  const taps = cells * d
+  const totalisticDigits = taps * (states - 1) + 1
   return {
     states,
     maxDigit: states - 1,
     totalisticDigits,
     totalisticMax: Math.pow(states, totalisticDigits) - 1,
-    localDigits: Math.pow(states, cells),
+    localDigits: Math.pow(states, taps),
     neighborhood: cells,
     radius: (cells - 1) / 2,
+    depth: d,
+    taps,
   }
 }
 
@@ -82,8 +114,8 @@ export function padRight(text: string, len: number): string {
 }
 
 /** Expands a totalistic rule code into a lookup table indexed by neighbor sum. */
-export function totalisticTable(code: number, states: number, neighborhood: number = 3): number[] {
-  const config = getConfig(states, neighborhood)
+export function totalisticTable(code: number, states: number, neighborhood: number = 3, depth: number = 1): number[] {
+  const config = getConfig(states, neighborhood, depth)
   const table: number[] = []
   for (let sum = 0; sum < config.totalisticDigits; sum++) {
     table.push(Math.floor(code / Math.pow(config.states, sum)) % config.states)
@@ -104,19 +136,23 @@ export function toBaseN(value: number, width: number, base: number): string {
 
 /**
  * Builds the local rule string equivalent to a totalistic code. The string has
- * `states ^ neighborhood` digits: the digit at index `v` is the output for the
- * neighborhood whose cells (most-significant = leftmost) encode `v` in base
- * `states`; since a totalistic rule only depends on the neighbor sum, that
- * output is `sums[sum of the cells]`.
+ * `states ^ (neighborhood * depth)` digits: the digit at index `v` is the output
+ * for the neighborhood whose cells (most-significant = leftmost) encode `v` in
+ * base `states`; since a totalistic rule only depends on the neighbor sum, that
+ * output is `sums[sum of the cells]`. Returns '' when the string would be too
+ * large to materialize (see {@link LOCAL_MATERIALIZE_LIMIT}).
  */
-export function buildLocalRuleFromTotalistic(code: number, states: number, neighborhood: number = 3): string {
-  const config = getConfig(states, neighborhood)
-  const sums = totalisticTable(code, config.states, config.neighborhood)
+export function buildLocalRuleFromTotalistic(code: number, states: number, neighborhood: number = 3, depth: number = 1): string {
+  const config = getConfig(states, neighborhood, depth)
+  if (!canMaterializeLocal(config)) {
+    return ''
+  }
+  const sums = totalisticTable(code, config.states, config.neighborhood, config.depth)
   let rule = ''
   for (let index = 0; index < config.localDigits; index++) {
     let remaining = index
     let sum = 0
-    for (let cell = 0; cell < config.neighborhood; cell++) {
+    for (let cell = 0; cell < config.taps; cell++) {
       sum += remaining % config.states
       remaining = Math.floor(remaining / config.states)
     }
@@ -134,8 +170,8 @@ export function buildLocalRuleFromTotalistic(code: number, states: number, neigh
  * least-significant digit, and is what makes e.g. local rule 30 (2 states)
  * match the well-known chaotic elementary CA "Rule 30".
  */
-export function localRuleToCode(rule: string, states: number, neighborhood: number = 3): number {
-  const config = getConfig(states, neighborhood)
+export function localRuleToCode(rule: string, states: number, neighborhood: number = 3, depth: number = 1): number {
+  const config = getConfig(states, neighborhood, depth)
   const clean = padRight(sanitizeStateString(rule, config.localDigits, states), config.localDigits)
   let code = 0
   for (let i = clean.length - 1; i >= 0; i--) {
@@ -149,8 +185,8 @@ export function localRuleToCode(rule: string, states: number, neighborhood: numb
  * to the next state (wrapping from the highest state back to 0). Used to
  * let the user click a legend cell and step its output value.
  */
-export function cycleLocalRuleDigit(rule: string, states: number, index: number, neighborhood: number = 3): string {
-  const config = getConfig(states, neighborhood)
+export function cycleLocalRuleDigit(rule: string, states: number, index: number, neighborhood: number = 3, depth: number = 1): string {
+  const config = getConfig(states, neighborhood, depth)
   const clean = padRight(sanitizeStateString(rule, config.localDigits, states), config.localDigits)
   if (index < 0 || index >= clean.length) {
     return clean
@@ -165,8 +201,8 @@ export function cycleLocalRuleDigit(rule: string, states: number, index: number,
  * `sumIndex` advanced to the next state (wrapping from the highest state
  * back to 0). Mirrors `cycleLocalRuleDigit` for totalistic mode.
  */
-export function cycleTotalisticDigit(code: number, states: number, sumIndex: number, neighborhood: number = 3): number {
-  const table = totalisticTable(code, states, neighborhood)
+export function cycleTotalisticDigit(code: number, states: number, sumIndex: number, neighborhood: number = 3, depth: number = 1): number {
+  const table = totalisticTable(code, states, neighborhood, depth)
   if (sumIndex < 0 || sumIndex >= table.length) {
     return code
   }
@@ -220,16 +256,17 @@ export function pickRandomCodes(from: number, to: number, count: number): number
  * `codeToLocalRule` would yield rules whose leading digits are always 0 (a
  * near-dead automaton). Holds for local rules with 4+ states.
  */
-export function localCodeExceedsSafeInteger(states: number, neighborhood: number = 3): boolean {
-  const config = getConfig(states, neighborhood)
+export function localCodeExceedsSafeInteger(states: number, neighborhood: number = 3, depth: number = 1): boolean {
+  const config = getConfig(states, neighborhood, depth)
   return config.localDigits * Math.log2(config.states) > 53
 }
 
 /** Builds a uniformly random local-rule digit string of the full length for `states`. */
-export function randomLocalRule(states: number, neighborhood: number = 3): string {
-  const config = getConfig(states, neighborhood)
+export function randomLocalRule(states: number, neighborhood: number = 3, depth: number = 1): string {
+  const config = getConfig(states, neighborhood, depth)
+  const length = Math.min(config.localDigits, LOCAL_MATERIALIZE_LIMIT)
   let rule = ''
-  for (let i = 0; i < config.localDigits; i++) {
+  for (let i = 0; i < length; i++) {
     rule += String(Math.floor(Math.random() * config.states))
   }
   return rule
@@ -241,18 +278,18 @@ export function randomLocalRule(states: number, neighborhood: number = 3): strin
  * doubles (see {@link localCodeExceedsSafeInteger}), so every neighborhood —
  * including the low-order "000…" ones — gets a genuinely random output value.
  */
-export function pickRandomLocalRules(states: number, count: number, neighborhood: number = 3): string[] {
+export function pickRandomLocalRules(states: number, count: number, neighborhood: number = 3, depth: number = 1): string[] {
   const n = Math.max(1, Math.floor(count))
   const rules: string[] = []
   for (let i = 0; i < n; i++) {
-    rules.push(randomLocalRule(states, neighborhood))
+    rules.push(randomLocalRule(states, neighborhood, depth))
   }
   return rules
 }
 
 /** Converts a numeric local rule code back into its digit string (see `localRuleToCode`). */
-export function codeToLocalRule(code: number, states: number, neighborhood: number = 3): string {
-  const config = getConfig(states, neighborhood)
+export function codeToLocalRule(code: number, states: number, neighborhood: number = 3, depth: number = 1): string {
+  const config = getConfig(states, neighborhood, depth)
   const normalized = Math.max(0, Math.min(Math.pow(config.states, config.localDigits) - 1, Math.floor(code)))
   let rule = ''
   let remaining = normalized

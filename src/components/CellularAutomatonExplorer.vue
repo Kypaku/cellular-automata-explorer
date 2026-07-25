@@ -46,6 +46,7 @@ const {
   mode,
   stateCount,
   neighborhood,
+  depth,
   init,
   noise,
   extraRows,
@@ -81,6 +82,7 @@ const {
   setMode,
   setStateCount,
   setNeighborhood,
+  setDepth,
   onCodeSliderInput,
   onCodeNumberInput,
   onHeightSliderInput,
@@ -840,6 +842,7 @@ function onSelectSubRule(snapshot: RuleSnapshot): void {
           :state-count="stateCount"
           :mode="mode"
           :neighborhood="neighborhood"
+          :depth="depth"
           :code-value="codeValue"
           :code-max="codeMax"
           :show-code-control="showCodeControl"
@@ -857,6 +860,7 @@ function onSelectSubRule(snapshot: RuleSnapshot): void {
           @set-state-count="setStateCount"
           @set-mode="setMode"
           @set-neighborhood="setNeighborhood"
+          @set-depth="setDepth"
           @code-slider-input="onCodeSliderInput"
           @code-number-input="onCodeNumberInput"
           @code-number-change="refresh"

@@ -63,6 +63,8 @@ export interface RuleDescriptor {
   localRule?: string
   /** Totalistic/local mode: cells read from the previous row (3, 5 or 7; default 3). */
   neighborhood?: number
+  /** Totalistic/local mode: how many previous rows the rule reads (default 1). */
+  depth?: number
   collisionMode?: CollisionMode
   collisionFixed?: number
 }
@@ -81,14 +83,16 @@ export function buildAnalysisParts(d: RuleDescriptor): RuleParts {
     }
   }
   const neighborhood = d.neighborhood ?? 3
+  const depth = d.depth ?? 1
   return d.mode === 'totalistic'
-    ? { stateCount: d.stateCount, mode: 'totalistic', code: d.code, localRule: '', neighborhood }
+    ? { stateCount: d.stateCount, mode: 'totalistic', code: d.code, localRule: '', neighborhood, depth }
     : {
         stateCount: d.stateCount,
         mode: 'local',
         code: 0,
-        localRule: d.localRule ?? codeToLocalRule(d.code, d.stateCount, neighborhood),
+        localRule: d.localRule ?? codeToLocalRule(d.code, d.stateCount, neighborhood, depth),
         neighborhood,
+        depth,
       }
 }
 
@@ -110,16 +114,18 @@ export function buildAnalysisSnapshot(d: RuleDescriptor, init: AnalysisInitMode,
     }
   }
   const neighborhood = d.neighborhood ?? 3
+  const depth = d.depth ?? 1
   const localRule =
     d.mode === 'local'
-      ? d.localRule ?? codeToLocalRule(d.code, d.stateCount, neighborhood)
-      : buildLocalRuleFromTotalistic(d.code, d.stateCount, neighborhood)
+      ? d.localRule ?? codeToLocalRule(d.code, d.stateCount, neighborhood, depth)
+      : buildLocalRuleFromTotalistic(d.code, d.stateCount, neighborhood, depth)
   return {
     stateCount: d.stateCount,
     mode: d.mode,
     code: d.mode === 'totalistic' ? d.code : 0,
     localRule,
     neighborhood,
+    depth,
     init: normInit,
     seed: '',
     height,

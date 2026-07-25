@@ -58,10 +58,14 @@ export interface CaConfig {
   totalisticDigits: number
   totalisticMax: number
   localDigits: number
-  /** Number of cells the rule looks at in the previous row: 3, 5 or 7. */
+  /** Number of cells the rule looks at in each row: 3, 5 or 7. */
   neighborhood: number
   /** Half-width of the neighborhood: (neighborhood - 1) / 2, i.e. 1, 2 or 3. */
   radius: number
+  /** How many previous rows the rule depends on (1 = classic; N reads the last N rows). */
+  depth: number
+  /** Total cells the rule reads = neighborhood * depth (spatial cells across all depth rows). */
+  taps: number
 }
 
 /** Fields identifying "the same rule", independent of init/seed/height. */
@@ -72,6 +76,8 @@ export interface RuleParts {
   localRule: string
   /** Totalistic/local mode: how many cells of the previous row the rule reads (3, 5 or 7; default 3). */
   neighborhood?: number
+  /** Totalistic/local mode: how many previous rows the rule depends on (default 1). */
+  depth?: number
   /** Descendants mode: `3 * (stateCount - 1)` digits, each live state → (left, center, right) child. */
   emissionRule?: string
   /** Descendants mode: how colliding signals on a child cell are merged. */
@@ -88,6 +94,8 @@ export interface RuleSnapshot {
   localRule: string
   /** Totalistic/local mode: how many cells of the previous row the rule reads (3, 5 or 7; default 3). */
   neighborhood?: number
+  /** Totalistic/local mode: how many previous rows the rule depends on (default 1). */
+  depth?: number
   /** Descendants mode: each live state → (left, center, right) child emission table. */
   emissionRule?: string
   /** Descendants mode: how colliding signals on a child cell are merged. */

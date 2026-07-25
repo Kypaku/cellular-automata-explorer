@@ -54,11 +54,24 @@ export interface RenderDiagramParams {
   /** Fraction 0..1 of cells forced to a rule-defying value each step. */
   noiseP: number
   initialRow: Uint8Array
+  /**
+   * The `depth - 1` rows that sit ABOVE the initial row (the "prehistory"),
+   * ordered oldest → newest. Used only when `config.depth > 1`; missing entries
+   * default to an empty (all-zero) row.
+   */
+  priorRows?: Uint8Array[]
 }
 
-/** Computes the next row from `row` using the shared totalistic/local/descendants rule + noise logic. */
+/**
+ * Computes the next row from the recent history using the shared
+ * totalistic/local/descendants rule + noise logic. `history` holds the last
+ * `config.depth` rows, ordered oldest → newest (so `history[history.length - 1]`
+ * is the current row). Totalistic sums, and local encodes as a base-`states`
+ * index, all `config.neighborhood` cells across every one of those `depth`
+ * rows; descendants mode only ever reads the current (newest) row.
+ */
 export function evolveStep(
-  row: Uint8Array,
+  history: Uint8Array[],
   width: number,
   config: CaConfig,
   mode: RuleMode,
@@ -72,33 +85,44 @@ export function evolveStep(
   const nextRow = new Uint8Array(width)
   const states = config.states
   const radius = config.radius
+  const depth = config.depth
+  const base = history.length - depth
+  const cur = history[history.length - 1]
   const merge: CollisionMode = collisionMode || 'sum'
   const fixed = collisionFixed || 0
   for (let k = 0; k < width; k++) {
-    const left = row[(k - 1 + width) % width]
-    const center = row[k]
-    const right = row[(k + 1) % width]
     let value: number
     if (mode === 'totalistic') {
-      // Sum the `neighborhood` cells centered on k (radius on each side).
+      // Sum the `neighborhood` cells centered on k across the last `depth` rows.
       let sum = 0
-      for (let d = -radius; d <= radius; d++) {
-        sum += row[(k + d + width) % width]
+      for (let t = 0; t < depth; t++) {
+        const rowT = history[base + t] || cur
+        for (let d = -radius; d <= radius; d++) {
+          sum += rowT[(k + d + width) % width]
+        }
       }
       value = (sums as number[])[sum]
     } else if (mode === 'local') {
-      // Encode the `neighborhood` cells as a base-`states` index, leftmost cell
-      // most-significant (radius === 1 reduces to left*states^2+center*states+right).
+      // Encode the `neighborhood * depth` cells (oldest row first, leftmost cell
+      // most-significant) as a base-`states` index into the local rule string.
       let index = 0
-      for (let d = -radius; d <= radius; d++) {
-        index = index * states + row[(k + d + width) % width]
+      for (let t = 0; t < depth; t++) {
+        const rowT = history[base + t] || cur
+        for (let d = -radius; d <= radius; d++) {
+          index = index * states + rowT[(k + d + width) % width]
+        }
       }
-      value = explicitRule.charCodeAt(index) - 48
+      const ch = explicitRule.charCodeAt(index)
+      // Unfilled / out-of-range neighborhoods (e.g. an un-materialized huge rule) are state 0.
+      value = ch >= 48 ? ch - 48 : 0
     } else {
-      // Descendants: each child gathers up to 3 emitted contributions. Background
-      // (state 0) emits nothing; a live parent's triple lives at (state-1)*3 in
-      // `emission`. a = right-child of the left parent, b = center-child of the
-      // center parent, c = left-child of the right parent.
+      // Descendants: each child gathers up to 3 emitted contributions from the
+      // current row. Background (state 0) emits nothing; a live parent's triple
+      // lives at (state-1)*3 in `emission`. a = right-child of the left parent,
+      // b = center-child of the center parent, c = left-child of the right parent.
+      const left = cur[(k - 1 + width) % width]
+      const center = cur[k]
+      const right = cur[(k + 1) % width]
       const em = emission as number[]
       const a = left === 0 ? 0 : em[(left - 1) * 3 + 2]
       const b = center === 0 ? 0 : em[(center - 1) * 3 + 1]
@@ -461,12 +485,23 @@ export function renderDiagram(params: RenderDiagramParams): Uint8Array[] {
   ctx.fillStyle = CA_COLORS[0]
   ctx.fillRect(0, 0, width * CA_PIXEL_SIZE, height * CA_PIXEL_SIZE)
 
-  let row = params.initialRow
+  // Rolling window of the last `depth` rows (oldest → newest). It is primed with
+  // the prehistory rows above the diagram, then the visible initial row on top.
+  const priors = params.priorRows || []
+  const window: Uint8Array[] = []
+  for (let i = 0; i < config.depth - 1; i++) {
+    window.push(priors[i] || new Uint8Array(width))
+  }
+  window.push(params.initialRow)
+
   const rowsData: Uint8Array[] = new Array(height)
   for (let y = 0; y < height; y++) {
+    const row = window[window.length - 1]
     rowsData[y] = row.slice()
     paintRow(ctx, row, width, y)
-    row = evolveStep(row, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed)
+    const next = evolveStep(window, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed)
+    window.push(next)
+    window.shift()
   }
   return rowsData
 }
@@ -505,16 +540,24 @@ export function extendDiagram(params: ExtendDiagramParams): Uint8Array[] {
   ctx.fillRect(0, 0, width * CA_PIXEL_SIZE, totalHeight * CA_PIXEL_SIZE)
 
   const rowsData: Uint8Array[] = new Array(totalHeight)
-  let row = previousRows[previousRows.length - 1] || new Uint8Array(width)
   for (let y = 0; y < previousRows.length; y++) {
     rowsData[y] = previousRows[y]
     paintRow(ctx, previousRows[y], width, y)
   }
+  // Seed the rolling window from the last `depth` already-known rows so the
+  // continuation reads the same history the interrupted run would have.
+  const window: Uint8Array[] = []
+  for (let i = config.depth; i >= 1; i--) {
+    const idx = previousRows.length - i
+    window.push(idx >= 0 ? previousRows[idx] : new Uint8Array(width))
+  }
   for (let i = 0; i < extraRows; i++) {
     const y = previousRows.length + i
-    row = evolveStep(row, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed)
-    rowsData[y] = row
-    paintRow(ctx, row, width, y)
+    const next = evolveStep(window, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed)
+    window.push(next)
+    window.shift()
+    rowsData[y] = next
+    paintRow(ctx, next, width, y)
   }
   return rowsData
 }

@@ -93,6 +93,7 @@ async function generate(): Promise<void> {
       collisionFixed: context.collisionFixed,
       noiseP: context.noiseP,
       initialRow: context.makeInitialRow(w),
+      priorRows: context.makePriorRows?.(w),
       cellSize: cs,
       downscale: downscale.value,
     })

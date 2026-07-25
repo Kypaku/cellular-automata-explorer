@@ -5,6 +5,7 @@ const props = defineProps<{
   stateCount: number
   mode: string
   neighborhood: number
+  depth: number
   codeValue: number
   codeMax: number
   showCodeControl: boolean
@@ -21,7 +22,7 @@ const props = defineProps<{
   initialEnergy: number
 }>()
 
-const ruleMaxLength = computed(() => Math.pow(props.stateCount, props.neighborhood))
+const ruleMaxLength = computed(() => Math.pow(props.stateCount, props.neighborhood * Math.max(1, props.depth)))
 const emissionMaxLength = computed(() => 3 * (props.stateCount - 1))
 const maxFixed = computed(() => props.stateCount - 1)
 
@@ -29,6 +30,7 @@ const emit = defineEmits([
   'set-state-count',
   'set-mode',
   'set-neighborhood',
+  'set-depth',
   'code-slider-input',
   'code-number-input',
   'code-number-change',
@@ -72,6 +74,18 @@ const emit = defineEmits([
           <button type="button" :class="{ on: neighborhood === 5 }" @click="emit('set-neighborhood', 5)">5 cells</button>
           <button type="button" :class="{ on: neighborhood === 7 }" @click="emit('set-neighborhood', 7)">7 cells</button>
         </span>
+
+        <span class="ca-label ml-4 mr-1">Previous rows</span>
+        <input
+          class="ca-number ca-number--sm"
+          type="number"
+          min="1"
+          max="8"
+          step="1"
+          :value="depth"
+          title="how many previous rows the rule depends on (1 = classic)"
+          @input="emit('set-depth', ($event.target as HTMLInputElement).value)"
+        />
       </template>
     
       <div class="ca-panel mt-2">

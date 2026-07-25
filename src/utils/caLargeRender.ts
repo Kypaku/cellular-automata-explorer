@@ -41,6 +41,8 @@ export interface RenderContext {
   ruleLabel: string
   /** Builds the initial row for the requested width using the current init/seed. */
   makeInitialRow: (width: number) => Uint8Array
+  /** Builds the `depth - 1` prehistory rows above the initial row (multi-row rules only). */
+  makePriorRows?: (width: number) => Uint8Array[]
 }
 
 export interface PngDiagramParams {
@@ -57,6 +59,8 @@ export interface PngDiagramParams {
   collisionFixed?: number
   noiseP: number
   initialRow: Uint8Array
+  /** The `depth - 1` prehistory rows above the initial row (multi-row rules only), oldest → newest. */
+  priorRows?: Uint8Array[]
   /** Scale factor (>= 1). Its meaning depends on `downscale`. */
   cellSize: number
   /** false: `cellSize` pixels per cell (enlarge). true: `cellSize` cells per pixel (shrink). */
@@ -183,8 +187,17 @@ export async function renderDiagramToPngBlob(params: PngDiagramParams): Promise<
   // backpressure while we keep feeding scanlines.
   const compressedPromise = readAll(compressor.readable)
 
-  let row = initialRow
+  // Rolling window of the last `depth` rows (oldest → newest): prehistory rows
+  // above the diagram, then the visible initial row on top.
+  const priors = params.priorRows || []
+  const window: Uint8Array[] = []
+  for (let i = 0; i < config.depth - 1; i++) {
+    window.push(priors[i] || new Uint8Array(width))
+  }
+  window.push(initialRow)
+
   for (let y = 0; y < height; y++) {
+    const row = window[window.length - 1]
     const emit = downscale ? y % factor === 0 : true
     if (emit) {
       fillScanline(row)
@@ -195,7 +208,9 @@ export async function renderDiagramToPngBlob(params: PngDiagramParams): Promise<
         await writer.write(scan.slice())
       }
     }
-    row = evolveStep(row, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed)
+    const next = evolveStep(window, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed)
+    window.push(next)
+    window.shift()
   }
   await writer.close()
   const compressed = await compressedPromise
