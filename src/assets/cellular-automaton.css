@@ -172,6 +172,12 @@ html.dark .ca-wrap {
   color: var(--ca-text-muted);
   min-height: 1.2em;
 }
+.ca-legend-wrap {
+  margin-bottom: 1rem;
+}
+.ca-legend-wrap .ca-legend {
+  margin-bottom: 0;
+}
 .ca-legend {
   display: flex;
   gap: 8px;
@@ -181,6 +187,19 @@ html.dark .ca-wrap {
 }
 .ca-legend.ca-legend--local {
   gap: 6px;
+}
+.ca-legend-toggle {
+  margin-top: 6px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--ca-text-secondary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.ca-legend-toggle:hover {
+  color: var(--ca-text-muted);
 }
 .ca-cell {
   display: flex;
