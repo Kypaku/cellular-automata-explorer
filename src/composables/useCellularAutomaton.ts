@@ -38,13 +38,13 @@ function inputValue(event: Event): string {
  * conditions, canvas rendering and the derived UI text/legend data.
  */
 export function useCellularAutomaton() {
-  const H = ref(110)
+  const H = ref(220)
   const W = ref(CA_WIDTH)
   const mode = ref<RuleMode>('local') // 'totalistic' | 'local'
   const stateCount = ref(2) // 2 | 3 | 4 | 5
   const neighborhood = ref(3) // 3 | 5 | 7 cells read from the previous row (totalistic/local only)
   const depth = ref(1) // how many previous rows the rule depends on (1 = classic; totalistic/local only)
-  const init = ref<InitMode>('random') // 'single' | 'random' | 'custom'
+  const init = ref<InitMode>('single') // 'single' | 'random' | 'custom'
   const noise = ref(0) // 0-100, % of cells on each step get a random value against the rule
 
   const totalisticCodes = reactive<Record<number, number>>({ 2: 6, 3: 1155, 4: 0, 5: 0 })

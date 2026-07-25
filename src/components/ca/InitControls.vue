@@ -30,34 +30,36 @@ const emit = defineEmits([
 </script>
 
 <template>
-  <div>
-    <div>
-      <h3>Initial Conditions</h3>
-    </div>
-    <span class="ca-label mr-1">Start</span>
-    <span class="ca-seg">
-      <button type="button" :class="{ on: init === 'single' }" @click="emit('set-init', 'single')">single cell</button>
-      <button type="button" :class="{ on: init === 'random' }" @click="emit('set-init', 'random')">random</button>
-      <button type="button" :class="{ on: init === 'custom' }" @click="emit('set-init', 'custom')">custom field</button>
-    </span>
+  <div class="ca-block">
+    <h3 class="ca-block-title">Initial Conditions</h3>
 
-    <div class="ca-control ca-control--wide mt-2" v-if="init === 'custom'">
-      <label class="ca-label">{{ seedLabelText }}</label>
-      <input
-        class="ca-input"
-        type="text"
-        inputmode="numeric"
-        maxlength="201"
-        spellcheck="false"
-        :placeholder="seedPlaceholder"
-        :value="seedInputValue"
-        @input="emit('seed-input', $event)"
-      />
-      <div class="ca-meter">{{ seedStatusText }}</div>
+    <div class="ca-fields">
+      <div class="ca-field">
+        <span class="ca-label">Start</span>
+        <span class="ca-seg">
+          <button type="button" :class="{ on: init === 'single' }" @click="emit('set-init', 'single')">single cell</button>
+          <button type="button" :class="{ on: init === 'random' }" @click="emit('set-init', 'random')">random</button>
+          <button type="button" :class="{ on: init === 'custom' }" @click="emit('set-init', 'custom')">custom field</button>
+        </span>
+      </div>
     </div>
 
-    <div class="flex items-center mt-2">
-  
+    <div class="ca-panel mt-2">
+      <div class="ca-control ca-control--wide" v-if="init === 'custom'">
+        <label class="ca-label">{{ seedLabelText }}</label>
+        <input
+          class="ca-input"
+          type="text"
+          inputmode="numeric"
+          maxlength="201"
+          spellcheck="false"
+          :placeholder="seedPlaceholder"
+          :value="seedInputValue"
+          @input="emit('seed-input', $event)"
+        />
+        <div class="ca-meter">{{ seedStatusText }}</div>
+      </div>
+
       <div class="ca-control">
         <label class="ca-label">Generation height</label>
         <div class="ca-inline">
@@ -82,7 +84,7 @@ const emit = defineEmits([
         </div>
         <div class="ca-meter">{{ heightStatusText }}</div>
       </div>
-  
+
       <div class="ca-control">
         <label class="ca-label">Generation width</label>
         <div class="ca-inline">
@@ -108,6 +110,7 @@ const emit = defineEmits([
         </div>
         <div class="ca-meter">{{ widthStatusText }}</div>
       </div>
+
       <div class="ca-control">
         <label class="ca-label">Noise probability (against the rule)</label>
         <div class="ca-inline">
@@ -140,6 +143,5 @@ const emit = defineEmits([
         <div class="ca-meter">{{ noiseStatusText }}</div>
       </div>
     </div>
-
   </div>
 </template>

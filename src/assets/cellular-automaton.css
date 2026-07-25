@@ -50,7 +50,7 @@ html.dark .ca-wrap {
 @media (min-width: 1400px) {
   .ca-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(360px, 480px);
+    grid-template-columns: minmax(0, 1fr) minmax(440px, 620px);
     align-items: start;
     gap: 20px;
   }
@@ -62,10 +62,99 @@ html.dark .ca-wrap {
     padding-right: 4px;
   }
   .ca-side {
+    position: sticky;
+    top: 12px;
     max-height: calc(100vh - 24px);
     overflow-y: auto;
     padding-right: 4px;
   }
+}
+.ca-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--ca-border);
+  margin-bottom: 1rem;
+}
+.ca-tab {
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--ca-text-secondary);
+  font-size: 14px;
+  line-height: 1.2;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.ca-tab:hover {
+  background: var(--ca-chip-bg);
+}
+.ca-tab--active {
+  background: var(--ca-panel);
+  border-color: var(--ca-border);
+  color: var(--ca-chip-text);
+  font-weight: 600;
+}
+.ca-tab--static {
+  cursor: default;
+}
+.ca-layout-toggle {
+  margin-left: auto;
+  align-self: center;
+  padding: 5px 10px;
+  border: 1px solid var(--ca-border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--ca-text-muted);
+  margin-bottom: 4px;
+}
+.ca-tab-panel {
+  min-width: 0;
+}
+.ca-block {
+  min-width: 0;
+  margin-bottom: 1.25rem;
+}
+.ca-block-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+.ca-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.ca-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ca-field .ca-seg {
+  flex-wrap: wrap;
+  border-radius: 12px;
+}
+.ca-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+/* Inside the narrow tabbed side column every control takes a full row
+   so sliders/inputs never overflow horizontally. */
+.ca-controls-tab .ca-control {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.ca-controls-tab .ca-slider {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+.ca-controls-tab .ca-number:not(.ca-number--sm) {
+  width: 140px;
 }
 .ca-panel {
   display: flex;

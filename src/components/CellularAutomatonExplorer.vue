@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted, ref, unref } from 'vue'
 import '../assets/cellular-automaton.css'
 import { useCellularAutomaton } from '../composables/useCellularAutomaton'
 import { useRuleTags } from '../composables/useRuleTags'
@@ -127,6 +127,105 @@ const { running: subRunning, done: subDone, total: subTotal, progress: subProgre
 
 onMounted(initialize)
 
+type SideTab = 'controls' | 'tags'
+const activeSideTab = ref<SideTab>('controls')
+
+/* Where the rule + initial-conditions blocks live: 'side' = in the tabbed side
+   column (default), 'main' = the original full-width spot above the diagram. */
+type ControlsPlacement = 'side' | 'main'
+const CONTROLS_PLACEMENT_KEY = 'ca-controls-placement'
+
+function readPlacement(): ControlsPlacement {
+  try {
+    return localStorage.getItem(CONTROLS_PLACEMENT_KEY) === 'main' ? 'main' : 'side'
+  } catch {
+    return 'side'
+  }
+}
+
+const controlsPlacement = ref<ControlsPlacement>(readPlacement())
+const controlsInSide = computed(() => controlsPlacement.value === 'side')
+
+function toggleControlsPlacement() {
+  const next: ControlsPlacement = controlsPlacement.value === 'side' ? 'main' : 'side'
+  controlsPlacement.value = next
+  activeSideTab.value = next === 'side' ? 'controls' : 'tags'
+  try {
+    localStorage.setItem(CONTROLS_PLACEMENT_KEY, next)
+  } catch {
+    /* storage unavailable - placement just won't persist */
+  }
+}
+
+/* Bound in two possible places, so keep the (long) binding lists in one spot. */
+const ruleControlsProps = computed(() => ({
+  stateCount: unref(stateCount),
+  mode: unref(mode),
+  neighborhood: unref(neighborhood),
+  depth: unref(depth),
+  codeValue: unref(codeValue),
+  codeMax: unref(codeMax),
+  showCodeControl: unref(showCodeControl),
+  sliderLabelText: unref(sliderLabelText),
+  ruleLabelText: unref(ruleLabelText),
+  ruleStatusText: unref(ruleStatusText),
+  ruleInputValue: unref(ruleInputValue),
+  emissionLabelText: unref(emissionLabelText),
+  emissionStatusText: unref(emissionStatusText),
+  emissionInputValue: unref(emissionInputValue),
+  collisionMode: unref(collisionMode),
+  collisionFixed: unref(collisionFixed),
+  energyEnabled: unref(energyEnabled),
+  initialEnergy: unref(initialEnergy),
+}))
+
+const ruleControlsHandlers = {
+  setStateCount,
+  setMode,
+  setNeighborhood,
+  setDepth,
+  codeSliderInput: onCodeSliderInput,
+  codeNumberInput: onCodeNumberInput,
+  codeNumberChange: refresh,
+  ruleInput: onRuleInput,
+  emissionInput: onEmissionInput,
+  setCollisionMode,
+  collisionFixedInput: onCollisionFixedInput,
+  setEnergyEnabled,
+  initialEnergyInput: onInitialEnergyInput,
+  randomRule: onRandomRule,
+  regen: run,
+}
+
+const initControlsProps = computed(() => ({
+  init: unref(init),
+  seedLabelText: unref(seedLabelText),
+  seedInputValue: unref(seedInputValue),
+  seedStatusText: unref(seedStatusText),
+  seedPlaceholder: unref(seedPlaceholder),
+  height: unref(H),
+  heightStatusText: unref(heightStatusText),
+  width: unref(W),
+  widthStatusText: unref(widthStatusText),
+  noise: unref(noise),
+  noiseStatusText: unref(noiseStatusText),
+}))
+
+const initControlsHandlers = {
+  setInit,
+  seedInput: onSeedInput,
+  heightSliderInput: onHeightSliderInput,
+  heightNumberInput: onHeightNumberInput,
+  heightNumberChange: run,
+  widthSliderInput: onWidthSliderInput,
+  widthNumberInput: onWidthNumberInput,
+  widthNumberChange: run,
+  noiseSliderInput: onNoiseSliderInput,
+  noiseNumberInput: onNoiseNumberInput,
+  noiseNumberChange: run,
+  noisePreset: onNoisePreset,
+}
+
 const {
   currentRuleTags,
   onToggleTag,
@@ -195,72 +294,15 @@ const {
 
     <div class="ca-layout">
     <div class="ca-main">
-    <div class="ca-row">
 
-        <RuleControls
-          :state-count="stateCount"
-          :mode="mode"
-          :neighborhood="neighborhood"
-          :depth="depth"
-          :code-value="codeValue"
-          :code-max="codeMax"
-          :show-code-control="showCodeControl"
-          :slider-label-text="sliderLabelText"
-          :rule-label-text="ruleLabelText"
-          :rule-status-text="ruleStatusText"
-          :rule-input-value="ruleInputValue"
-          :emission-label-text="emissionLabelText"
-          :emission-status-text="emissionStatusText"
-          :emission-input-value="emissionInputValue"
-          :collision-mode="collisionMode"
-          :collision-fixed="collisionFixed"
-          :energy-enabled="energyEnabled"
-          :initial-energy="initialEnergy"
-          @set-state-count="setStateCount"
-          @set-mode="setMode"
-          @set-neighborhood="setNeighborhood"
-          @set-depth="setDepth"
-          @code-slider-input="onCodeSliderInput"
-          @code-number-input="onCodeNumberInput"
-          @code-number-change="refresh"
-          @rule-input="onRuleInput"
-          @emission-input="onEmissionInput"
-          @set-collision-mode="setCollisionMode"
-          @collision-fixed-input="onCollisionFixedInput"
-          @set-energy-enabled="setEnergyEnabled"
-          @initial-energy-input="onInitialEnergyInput"
-          @random-rule="onRandomRule"
-          @regen="run"
-        />
-    </div>
-
-    <div class="ca-row">
-      <InitControls
-        :init="init"
-        :seed-label-text="seedLabelText"
-        :seed-input-value="seedInputValue"
-        :seed-status-text="seedStatusText"
-        :seed-placeholder="seedPlaceholder"
-        :height="H"
-        :height-status-text="heightStatusText"
-        :width="W"
-        :width-status-text="widthStatusText"
-        :noise="noise"
-        :noise-status-text="noiseStatusText"
-        @set-init="setInit"
-        @seed-input="onSeedInput"
-        @height-slider-input="onHeightSliderInput"
-        @height-number-input="onHeightNumberInput"
-        @height-number-change="run"
-        @width-slider-input="onWidthSliderInput"
-        @width-number-input="onWidthNumberInput"
-        @width-number-change="run"
-        @noise-slider-input="onNoiseSliderInput"
-        @noise-number-input="onNoiseNumberInput"
-        @noise-number-change="run"
-        @noise-preset="onNoisePreset"
-      />
-    </div>
+    <template v-if="!controlsInSide">
+      <div class="ca-row">
+        <RuleControls v-bind="ruleControlsProps" v-on="ruleControlsHandlers" />
+      </div>
+      <div class="ca-row">
+        <InitControls v-bind="initControlsProps" v-on="initControlsHandlers" />
+      </div>
+    </template>
 
     <LegendPanel
       :colors="COL"
@@ -313,6 +355,42 @@ const {
     </div>
 
     <div class="ca-side">
+    <div class="ca-tabs" role="tablist">
+      <template v-if="controlsInSide">
+        <button
+          type="button"
+          role="tab"
+          class="ca-tab"
+          :class="{ 'ca-tab--active': activeSideTab === 'controls' }"
+          :aria-selected="activeSideTab === 'controls'"
+          @click="activeSideTab = 'controls'"
+        >Rule &amp; initial conditions</button>
+        <button
+          type="button"
+          role="tab"
+          class="ca-tab"
+          :class="{ 'ca-tab--active': activeSideTab === 'tags' }"
+          :aria-selected="activeSideTab === 'tags'"
+          @click="activeSideTab = 'tags'"
+        >Tags &amp; analysis</button>
+      </template>
+      <span v-else class="ca-tab ca-tab--active ca-tab--static">Tags &amp; analysis</span>
+      <button
+        type="button"
+        class="ca-tab ca-layout-toggle"
+        :title="controlsInSide
+          ? 'Move the rule and initial-conditions blocks back above the diagram'
+          : 'Move the rule and initial-conditions blocks into the side tabs'"
+        @click="toggleControlsPlacement"
+      >{{ controlsInSide ? 'old layout' : 'tabbed layout' }}</button>
+    </div>
+
+    <div v-if="controlsInSide" v-show="activeSideTab === 'controls'" class="ca-tab-panel ca-controls-tab" role="tabpanel">
+      <RuleControls v-bind="ruleControlsProps" v-on="ruleControlsHandlers" />
+      <InitControls v-bind="initControlsProps" v-on="initControlsHandlers" />
+    </div>
+
+    <div v-show="!controlsInSide || activeSideTab === 'tags'" class="ca-tab-panel" role="tabpanel">
     <div class="ca-row">
       <TagsPanel
         :tags="tags"
@@ -514,6 +592,7 @@ const {
         @undo-found="onUndoSubFound"
         @clear-tag="onClearSubTag"
       />
+    </div>
     </div>
     </div>
     </div>
