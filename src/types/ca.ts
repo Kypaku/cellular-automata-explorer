@@ -339,6 +339,27 @@ export interface ChaosResult {
   totalBlocks: number
 }
 
+/** Options for {@link detectAllStates}. */
+export interface AllStatesOptions {
+  width: number
+  height: number
+  init: AnalysisInitMode
+  /** Percentage of rows counted from the BOTTOM of the generation that must be checked. */
+  bottomPercent: number
+}
+
+/** Result of {@link detectAllStates}. */
+export interface AllStatesResult {
+  /** True when every state value 0..states-1 appears at least once in the checked rows. */
+  hasAllStates: boolean
+  /** How many distinct state values were found in the checked rows. */
+  presentStates: number
+  /** State values (0..states-1) that never appeared in the checked rows. */
+  missingStates: number[]
+  /** Total number of possible state values for this rule. */
+  totalStates: number
+}
+
 /** Colour scheme used to paint distinct patterns in {@link buildPatternMap}. */
 export type PatternPalette = 'color' | 'grayscale'
 

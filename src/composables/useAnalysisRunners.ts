@@ -11,7 +11,7 @@ import type {
   RuleSnapshot,
   SubAnalyzeOptions,
 } from '../types/ca'
-import { CHAOS_TAG, CUSTOM_SEARCH_TAG, FIELDS_TAG, GLIDERS_TAG, LARGE_STRUCTURES_TAG, LINES_TAG } from '../constants/ca'
+import { ALL_STATES_TAG, CHAOS_TAG, CUSTOM_SEARCH_TAG, FIELDS_TAG, GLIDERS_TAG, LARGE_STRUCTURES_TAG, LINES_TAG } from '../constants/ca'
 import { partsFromSnapshot } from '../utils/caMath'
 import type { useRuleTags } from './useRuleTags'
 import type { useRuleAnalysis } from './useRuleAnalysis'
@@ -20,6 +20,7 @@ import type { useRuleGlidersAnalysis } from './useRuleGlidersAnalysis'
 import type { useRuleCustomSearchAnalysis } from './useRuleCustomSearchAnalysis'
 import type { useRuleLinesAnalysis } from './useRuleLinesAnalysis'
 import type { useRuleChaosAnalysis } from './useRuleChaosAnalysis'
+import type { useRuleAllStatesAnalysis } from './useRuleAllStatesAnalysis'
 import type { useRuleSubAnalysis } from './useRuleSubAnalysis'
 
 export interface AnalysisRunnersDeps {
@@ -35,6 +36,7 @@ export interface AnalysisRunnersDeps {
   customSearch: ReturnType<typeof useRuleCustomSearchAnalysis>
   lines: ReturnType<typeof useRuleLinesAnalysis>
   chaos: ReturnType<typeof useRuleChaosAnalysis>
+  allStates: ReturnType<typeof useRuleAllStatesAnalysis>
   sub: ReturnType<typeof useRuleSubAnalysis>
 }
 
@@ -179,6 +181,19 @@ interface RunChaosAnalysisPayload {
   targetTag: string
 }
 
+interface RunAllStatesAnalysisPayload {
+  from: number
+  to: number
+  width: number
+  height: number
+  init: AnalysisInitMode
+  bottomPercent: number
+  sourceMode: AnalysisSourceMode
+  sampleCount: number
+  tags: string[]
+  targetTag: string
+}
+
 interface RunSubAnalysisPayload {
   sourceMode: AnalysisSourceMode
   from: number
@@ -198,7 +213,7 @@ interface RunSubAnalysisPayload {
  * "select rule" from the sub-analysis results list back into the rule editor.
  */
 export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
-  const { stateCount, mode, collisionMode, collisionFixed, applyRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, sub } = deps
+  const { stateCount, mode, collisionMode, collisionFixed, applyRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, allStates, sub } = deps
 
   /** Resolves the union of saved rules carrying any of the given tags into
    * classifier-ready inputs (parts + snapshot + display name). */
@@ -457,6 +472,40 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     })
   }
 
+  const allStatesTracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, ALL_STATES_TAG)
+
+  function onRunAllStatesAnalysis({
+    from,
+    to,
+    width,
+    height,
+    init: allStatesInit,
+    bottomPercent,
+    sourceMode,
+    sampleCount,
+    tags: selectedTags,
+    targetTag,
+  }: RunAllStatesAnalysisPayload): void {
+    const tag = String(targetTag || '').trim() || ALL_STATES_TAG
+    allStatesTracker.reset()
+    allStates.start({
+      stateCount: stateCount.value,
+      mode: mode.value,
+      collisionMode: collisionMode.value,
+      collisionFixed: collisionFixed.value,
+      from,
+      to,
+      width,
+      height,
+      init: allStatesInit,
+      bottomPercent,
+      sourceMode,
+      sampleCount,
+      rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
+      apply: allStatesTracker.apply(tag),
+    })
+  }
+
   const subTracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, LARGE_STRUCTURES_TAG)
 
   function onRunSubAnalysis({
@@ -515,6 +564,10 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     onUndoChaosFound: chaosTracker.undo,
     onClearChaosTag: chaosTracker.clear,
     chaosFoundRules: chaosTracker.foundRules,
+    onRunAllStatesAnalysis,
+    onUndoAllStatesFound: allStatesTracker.undo,
+    onClearAllStatesTag: allStatesTracker.clear,
+    allStatesFoundRules: allStatesTracker.foundRules,
     onRunSubAnalysis,
     onUndoSubFound: subTracker.undo,
     onClearSubTag: subTracker.clear,

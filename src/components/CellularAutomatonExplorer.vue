@@ -9,6 +9,7 @@ import { useRuleGlidersAnalysis } from '../composables/useRuleGlidersAnalysis'
 import { useRuleCustomSearchAnalysis } from '../composables/useRuleCustomSearchAnalysis'
 import { useRuleLinesAnalysis } from '../composables/useRuleLinesAnalysis'
 import { useRuleChaosAnalysis } from '../composables/useRuleChaosAnalysis'
+import { useRuleAllStatesAnalysis } from '../composables/useRuleAllStatesAnalysis'
 import { useRuleSubAnalysis } from '../composables/useRuleSubAnalysis'
 import { useTagInteractions } from '../composables/useTagInteractions'
 import { useAnalysisRunners } from '../composables/useAnalysisRunners'
@@ -24,6 +25,7 @@ import GlidersAnalysisPanel from './ca/GlidersAnalysisPanel.vue'
 import CustomSearchPanel from './ca/CustomSearchPanel.vue'
 import LinesAnalysisPanel from './ca/LinesAnalysisPanel.vue'
 import ChaosAnalysisPanel from './ca/ChaosAnalysisPanel.vue'
+import AllStatesAnalysisPanel from './ca/AllStatesAnalysisPanel.vue'
 import SubAnalysisPanel from './ca/SubAnalysisPanel.vue'
 
 const ca = useCellularAutomaton()
@@ -117,6 +119,9 @@ const { running: linesRunning, done: linesDone, total: linesTotal, progress: lin
 const chaosApi = useRuleChaosAnalysis()
 const { running: chaosRunning, done: chaosDone, total: chaosTotal, progress: chaosProgress, currentCode: chaosCurrentCode, found: chaosFound, stop: stopChaosAnalysis } = chaosApi
 
+const allStatesApi = useRuleAllStatesAnalysis()
+const { running: allStatesRunning, done: allStatesDone, total: allStatesTotal, progress: allStatesProgress, currentCode: allStatesCurrentCode, found: allStatesFound, stop: stopAllStatesAnalysis } = allStatesApi
+
 const subApi = useRuleSubAnalysis()
 const { running: subRunning, done: subDone, total: subTotal, progress: subProgress, currentName: subCurrentName, found: subFound, results: subResults, stop: stopSubAnalysis } = subApi
 
@@ -157,6 +162,10 @@ const {
   onUndoChaosFound,
   onClearChaosTag,
   chaosFoundRules,
+  onRunAllStatesAnalysis,
+  onUndoAllStatesFound,
+  onClearAllStatesTag,
+  allStatesFoundRules,
   onRunSubAnalysis,
   onUndoSubFound,
   onClearSubTag,
@@ -175,6 +184,7 @@ const {
   customSearch: customSearchApi,
   lines: linesApi,
   chaos: chaosApi,
+  allStates: allStatesApi,
   sub: subApi,
 })
 </script>
@@ -456,6 +466,28 @@ const {
         @stop="stopChaosAnalysis"
         @undo-found="onUndoChaosFound"
         @clear-tag="onClearChaosTag"
+      />
+    </div>
+
+    <div class="ca-row">
+      <AllStatesAnalysisPanel
+        :state-count="stateCount"
+        :mode="mode"
+        :code-max="codeMax"
+        :running="allStatesRunning"
+        :done="allStatesDone"
+        :total="allStatesTotal"
+        :progress="allStatesProgress"
+        :current-code="allStatesCurrentCode"
+        :found="allStatesFound"
+        :can-undo-found="allStatesFoundRules.length > 0"
+        :tags="tags"
+        :tag-counts="tagCounts"
+        :rules="rules"
+        @run="onRunAllStatesAnalysis"
+        @stop="stopAllStatesAnalysis"
+        @undo-found="onUndoAllStatesFound"
+        @clear-tag="onClearAllStatesTag"
       />
     </div>
 

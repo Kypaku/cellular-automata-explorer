@@ -55,6 +55,12 @@ export const CHAOS_TAG = 'NoChaos'
 // within R% of the mean) — i.e. the rule settles into large, homogeneous structures.
 export const LARGE_STRUCTURES_TAG = 'LargeStructures'
 
+// Extra, non-exclusive analysis tag produced by the "all states present" test. Only
+// the BOTTOM `bottomPercent`% of the evolved W×H generation is inspected (the
+// settled part, past the initial transient); the rule is tagged when every
+// possible state value (0..states-1) shows up at least once among those rows.
+export const ALL_STATES_TAG = 'AllStates'
+
 // Sentinel cell value inside a CustomPattern meaning "match any state value".
 export const CUSTOM_ANY = -1
 
@@ -214,6 +220,18 @@ export const CHAOS_DEFAULTS = {
   cutTop: 0, // % of the top (transient) rows discarded before tiling
   blockSize: 4, // M: 5×5 patterns, per the user's request
   maxDominant: 5, // % — max share of the most frequent pattern to still count as chaos
+}
+
+// Default parameters for the standalone "all states present" test (run separately
+// from the class analysis, since its tag is orthogonal). Only the bottom
+// `bottomPercent`% of rows of the evolved W×H diagram are inspected; the rule is
+// tagged ALL_STATES_TAG when every state value 0..states-1 appears at least once
+// among the cells of those rows.
+export const ALL_STATES_DEFAULTS = {
+  width: 201, // W of the evolved generation
+  height: 200, // H of the evolved generation
+  init: 'random' as 'random' | 'single', // 'random' | 'single'
+  bottomPercent: 50, // % of rows counted from the bottom that must contain every state
 }
 
 // Default parameters for the per-rule "sub-analysis": for every rule carrying a

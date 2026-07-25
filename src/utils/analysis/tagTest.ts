@@ -10,12 +10,14 @@ import {
   CUSTOM_SEARCH_DEFAULTS,
   LINES_DEFAULTS,
   CHAOS_DEFAULTS,
+  ALL_STATES_DEFAULTS,
   SUBANALYSIS_DEFAULTS,
   FIELDS_TAG,
   GLIDERS_TAG,
   CUSTOM_SEARCH_TAG,
   LINES_TAG,
   CHAOS_TAG,
+  ALL_STATES_TAG,
   LARGE_STRUCTURES_TAG,
   CUSTOM_ANY,
 } from '../../constants/ca'
@@ -26,6 +28,7 @@ import { detectGliders } from './gliders'
 import { detectCustomSearch } from './customSearch'
 import { detectLines } from './lines'
 import { detectChaos } from './chaos'
+import { detectAllStates } from './allStates'
 import { subAnalyzeRule } from './subAnalysis'
 
 /** One line of the "test current rule against all analyses" result. */
@@ -89,6 +92,10 @@ export function testRuleAgainstAllTags(parts: RuleParts, customPatterns: CustomP
   // Absence of chaos (tag applied on absence).
   const chaos = detectChaos(parts, { ...CHAOS_DEFAULTS })
   results.push({ tag: CHAOS_TAG, passed: !chaos.isChaotic, kind: 'orthogonal' })
+
+  // All states present in the bottom part of the diagram.
+  const allStates = detectAllStates(parts, { ...ALL_STATES_DEFAULTS })
+  results.push({ tag: ALL_STATES_TAG, passed: allStates.hasAllStates, kind: 'orthogonal' })
 
   // Large structures (tag applied when the diagram never homogenizes).
   const sub = subAnalyzeRule(parts, { ...SUBANALYSIS_DEFAULTS })
