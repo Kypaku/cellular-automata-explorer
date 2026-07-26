@@ -49,7 +49,7 @@ const visibleItems = computed(() => (collapsed.value && showToggle.value ? props
       </div>
     </div>
     <button v-if="showToggle" type="button" class="ca-legend-toggle" @click="collapsed = !collapsed">
-      {{ collapsed ? `Показать все (${legendItems.length})` : 'Свернуть' }}
+      {{ collapsed ? `Show all (${legendItems.length})` : 'Collapse' }}
     </button>
   </div>
 </template>

@@ -13,8 +13,8 @@ const { theme, toggleTheme } = useTheme()
         <button
           type="button"
           class="icon-btn"
-          :title="theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'"
-          :aria-label="theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'"
+          :title="theme === 'dark' ? 'Light theme' : 'Dark theme'"
+          :aria-label="theme === 'dark' ? 'Enable light theme' : 'Enable dark theme'"
           @click="toggleTheme"
         >
           <svg
