@@ -22,6 +22,10 @@ const props = defineProps<{
 
 const emit = defineEmits(['run', 'stop'])
 
+// Collapsed by default - there are many analysis blocks and expanding all of them
+// makes the tags/analysis tab hard to scroll through.
+const collapsed = ref(true)
+
 const chaosFluxPercent = ref(Math.round(ANALYSIS_DEFAULTS.chaosFlux * 100))
 const sparseFillPercent = ref(Math.round(ANALYSIS_DEFAULTS.sparseFill * 100))
 const windowFraction = ref(ANALYSIS_DEFAULTS.windowFraction)
@@ -62,8 +66,11 @@ function onRun(config: AnalysisRunConfig): void {
 
 <template>
   <div class="ca-analysis">
-    <h3 class="ca-panel-title">Rule Analysis</h3>
+    <h3 class="ca-panel-title ca-panel-title--toggle" @click="collapsed = !collapsed">
+      <span class="ca-panel-toggle-icon">{{ collapsed ? '▶' : '▼' }}</span> Rule Analysis
+    </h3>
     <AnalysisRunControls
+      v-show="!collapsed"
       :code-max="codeMax"
       :running="running"
       :done="done"

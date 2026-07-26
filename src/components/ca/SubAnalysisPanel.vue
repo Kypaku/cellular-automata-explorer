@@ -31,6 +31,10 @@ const emit = defineEmits(['run', 'stop', 'select-rule', 'undo-found', 'clear-tag
 // LargeStructures tag but the user can pick any existing tag (or type a new one).
 const targetTag = ref<string>(LARGE_STRUCTURES_TAG)
 
+// Collapsed by default - there are many analysis blocks and expanding all of them
+// makes the tags/analysis tab hard to scroll through.
+const collapsed = ref(true)
+
 // Number of rules currently carrying the selected target tag.
 const targetTagCount = computed(() => props.tagCounts[targetTag.value.trim()] || 0)
 
@@ -96,8 +100,11 @@ function onRun(config: AnalysisRunConfig): void {
 
 <template>
   <div class="ca-analysis">
-    <h3 class="ca-panel-title">Sub-analysis ({{ LARGE_STRUCTURES_TAG }})</h3>
+    <h3 class="ca-panel-title ca-panel-title--toggle" @click="collapsed = !collapsed">
+      <span class="ca-panel-toggle-icon">{{ collapsed ? '▶' : '▼' }}</span> Sub-analysis ({{ LARGE_STRUCTURES_TAG }})
+    </h3>
     <AnalysisRunControls
+      v-show="!collapsed"
       :code-max="codeMax"
       :running="running"
       :done="done"

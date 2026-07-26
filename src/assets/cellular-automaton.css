@@ -543,6 +543,21 @@ html.dark .ca-wrap {
   font-weight: 700;
   color: var(--ca-chip-text);
 }
+.ca-panel-title--toggle {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ca-panel-title--toggle:hover {
+  opacity: 0.8;
+}
+.ca-panel-toggle-icon {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--ca-text-muted);
+}
 .ca-field {
   display: flex;
   flex-direction: column;

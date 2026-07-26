@@ -25,6 +25,10 @@ const props = defineProps<{
 
 const emit = defineEmits(['run', 'stop', 'undo-found', 'clear-tag'])
 
+// Collapsed by default - there are many analysis blocks and expanding all of them
+// makes the tags/analysis tab hard to scroll through.
+const collapsed = ref(true)
+
 const blockWidth = ref(FIELDS_DEFAULTS.blockWidth)
 const blockHeight = ref(FIELDS_DEFAULTS.blockHeight)
 const minPercent = ref(FIELDS_DEFAULTS.minPercent)
@@ -69,8 +73,11 @@ function onUndoFound(): void {
 
 <template>
   <div class="ca-analysis">
-    <h3 class="ca-panel-title">Fields test ({{ FIELDS_TAG }})</h3>
+    <h3 class="ca-panel-title ca-panel-title--toggle" @click="collapsed = !collapsed">
+      <span class="ca-panel-toggle-icon">{{ collapsed ? '▶' : '▼' }}</span> Fields test ({{ FIELDS_TAG }})
+    </h3>
     <AnalysisRunControls
+      v-show="!collapsed"
       :code-max="codeMax"
       :running="running"
       :done="done"
