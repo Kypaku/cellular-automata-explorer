@@ -33,6 +33,8 @@ export interface LinesAnalysisStartParams {
   blockStep: number
   lineCount: number
   ignoreBackground: boolean
+  maxPeriod: number
+  maxDrift: number
   sourceMode?: AnalysisSourceMode
   sampleCount?: number
   rules?: AnalysisRuleInput[]
@@ -83,6 +85,8 @@ export function useRuleLinesAnalysis() {
       blockStep,
       lineCount,
       ignoreBackground,
+      maxPeriod,
+      maxDrift,
       apply,
     } = params
     const from = Math.max(0, Math.floor(params.from))
@@ -151,6 +155,8 @@ export function useRuleLinesAnalysis() {
           blockStep,
           lineCount,
           ignoreBackground,
+          maxPeriod,
+          maxDrift,
         })
         const noLines = !hasLines
         if (noLines) {

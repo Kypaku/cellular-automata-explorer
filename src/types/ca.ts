@@ -292,6 +292,14 @@ export interface LinesOptions {
   lineCount: number
   /** Skip the most frequent (background) pattern when counting lines. */
   ignoreBackground: boolean
+  /**
+   * Largest temporal period p a line's colour may repeat with (1 = the colour
+   * must be constant, i.e. the plain non-periodic scan). Periods 1..maxPeriod
+   * are tried, each with every phase, by sub-sampling every p-th block-row.
+   */
+  maxPeriod?: number
+  /** Sideways reach of the diagonal connectivity in blocks (1 = 8-connected). */
+  maxDrift?: number
 }
 
 /** Result of {@link detectLines}. */
@@ -304,6 +312,8 @@ export interface LinesResult {
   lineCount: number
   /** Pattern size M at which the search stopped. */
   blockSize: number
+  /** Temporal period the best line count was observed at (1 = constant colour). */
+  period: number
 }
 
 /** Options for {@link detectChaos}. */

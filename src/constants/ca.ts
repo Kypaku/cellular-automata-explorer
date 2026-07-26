@@ -191,9 +191,11 @@ export const CUSTOM_SEARCH_STORAGE_KEY = 'ca-custom-search-patterns'
 // Default parameters for the standalone "absence of lines" test (run separately
 // from the class analysis, since its tag is orthogonal). The top `cutTop`% of the
 // W×H diagram (transient) is discarded; the rest is reduced to an M×M pattern map
-// and searched for full-height straight/diagonal single-colour lines. The pattern
-// size M grows from `minBlock` to `maxBlock`; the rule is tagged LINES_TAG only
-// when no direction ever reaches `lineCount` lines (i.e. lines are absent).
+// and searched for full-height straight/diagonal lines whose pattern colour repeats
+// with a temporal period of at most `maxPeriod` block-rows (blinking rules never
+// hold one constant colour). The pattern size M grows from `minBlock` to `maxBlock`;
+// the rule is tagged LINES_TAG only when no direction ever reaches `lineCount` lines
+// (i.e. lines are absent).
 export const LINES_DEFAULTS = {
   width: 201, // W of the evolved generation
   height: 200, // H of the evolved generation
@@ -204,6 +206,8 @@ export const LINES_DEFAULTS = {
   blockStep: 1, // increment of M between successive tries
   lineCount: 3, // N: same-direction full-height lines needed to conclude "has lines"
   ignoreBackground: true, // skip the dominant (background) pattern when counting lines
+  maxPeriod: 2, // p: largest temporal period a line's colour may repeat with (1 = constant)
+  maxDrift: 1, // sideways reach of the diagonal connectivity, in blocks
 }
 
 // Default parameters for the standalone "chaos" test (run separately from the

@@ -160,6 +160,8 @@ interface RunLinesAnalysisPayload {
   blockStep: number
   lineCount: number
   ignoreBackground: boolean
+  maxPeriod: number
+  maxDrift: number
   sourceMode: AnalysisSourceMode
   sampleCount: number
   tags: string[]
@@ -404,6 +406,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     blockStep,
     lineCount,
     ignoreBackground,
+    maxPeriod,
+    maxDrift,
     sourceMode,
     sampleCount,
     tags: selectedTags,
@@ -427,6 +431,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
       blockStep,
       lineCount,
       ignoreBackground,
+      maxPeriod,
+      maxDrift,
       sourceMode,
       sampleCount,
       rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,

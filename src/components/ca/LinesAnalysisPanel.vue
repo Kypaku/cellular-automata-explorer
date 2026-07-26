@@ -31,6 +31,8 @@ const maxBlock = ref(LINES_DEFAULTS.maxBlock)
 const blockStep = ref(LINES_DEFAULTS.blockStep)
 const lineCount = ref(LINES_DEFAULTS.lineCount)
 const ignoreBackground = ref(LINES_DEFAULTS.ignoreBackground)
+const maxPeriod = ref(LINES_DEFAULTS.maxPeriod)
+const maxDrift = ref(LINES_DEFAULTS.maxDrift)
 
 // The tag that found rules are attached to. Defaults to the built-in NoLines tag
 // but the user can pick any existing tag (or type a new one) to use instead.
@@ -57,6 +59,8 @@ function onRun(config: AnalysisRunConfig): void {
   maxBlock.value = clampInt(maxBlock.value, minBlock.value, 64, LINES_DEFAULTS.maxBlock)
   blockStep.value = clampInt(blockStep.value, 1, 32, LINES_DEFAULTS.blockStep)
   lineCount.value = clampInt(lineCount.value, 1, 50, LINES_DEFAULTS.lineCount)
+  maxPeriod.value = clampInt(maxPeriod.value, 1, 16, LINES_DEFAULTS.maxPeriod)
+  maxDrift.value = clampInt(maxDrift.value, 1, 8, LINES_DEFAULTS.maxDrift)
   emit('run', {
     ...config,
     cutTop: cutTop.value,
@@ -65,6 +69,8 @@ function onRun(config: AnalysisRunConfig): void {
     blockStep: blockStep.value,
     lineCount: lineCount.value,
     ignoreBackground: ignoreBackground.value,
+    maxPeriod: maxPeriod.value,
+    maxDrift: maxDrift.value,
     targetTag: targetTag.value.trim() || LINES_TAG,
   })
 }
@@ -102,12 +108,15 @@ function onUndoFound(): void {
       <template #description>
         <label class="ca-label">
           Separate run: the top {{ cutTop }}% of the W×H generation is cut off (transient process),
-          the rest is reduced to M×M patterns (like in the "to patterns" block) and solid lines of a
+          the rest is reduced to M×M patterns (like in the "to patterns" block) and lines of a
           single color-pattern spanning the full height are searched for — from y0 to the bottom. A line
           counts if it is straight (vertical) or slanted at any angle (the next cell is to the side, below, or
-          diagonal, any sideways drift). If {{ lineCount }} lines aren't reached in any direction,
-          the pattern size M is increased up to {{ maxBlock }}. The tag «{{ targetTag.trim() || LINES_TAG }}»
-          is applied to rules where no lines were found at all. The tag is independent and can coexist
+          diagonal, any sideways drift). Blinking rules never keep one constant color, so the color is
+          allowed to repeat with a temporal period of up to {{ maxPeriod }} block-rows (1 = constant color,
+          as before): every p-th block-row is taken, in every phase. If {{ lineCount }} lines aren't reached
+          in any direction, the pattern size M is increased up to {{ maxBlock }}. The tag
+          «{{ targetTag.trim() || LINES_TAG }}» is applied to rules where no lines were found at all.
+          The tag is independent and can coexist
           with any class (currently {{ modeLabel }} for {{ stateCount }} states).
         </label>
       </template>
@@ -140,6 +149,17 @@ function onUndoFound(): void {
           <label class="ca-field">
             <span class="ca-field-cap">step M</span>
             <input class="ca-number" type="number" min="1" max="32" step="1" v-model.number="blockStep" :disabled="running" />
+          </label>
+        </div>
+
+        <div class="ca-inline">
+          <label class="ca-field">
+            <span class="ca-field-cap">color period p (1 = constant)</span>
+            <input class="ca-number" type="number" min="1" max="16" step="1" v-model.number="maxPeriod" :disabled="running" />
+          </label>
+          <label class="ca-field">
+            <span class="ca-field-cap">sideways drift, blocks</span>
+            <input class="ca-number" type="number" min="1" max="8" step="1" v-model.number="maxDrift" :disabled="running" />
           </label>
         </div>
 
