@@ -10,6 +10,7 @@ import {
   CUSTOM_SEARCH_DEFAULTS,
   LINES_DEFAULTS,
   CHAOS_DEFAULTS,
+  CHAOS2_DEFAULTS,
   ALL_STATES_DEFAULTS,
   SUBANALYSIS_DEFAULTS,
   FIELDS_TAG,
@@ -17,6 +18,7 @@ import {
   CUSTOM_SEARCH_TAG,
   LINES_TAG,
   CHAOS_TAG,
+  CHAOS2_TAG,
   ALL_STATES_TAG,
   LARGE_STRUCTURES_TAG,
   CUSTOM_ANY,
@@ -28,6 +30,7 @@ import { detectGliders } from './gliders'
 import { detectCustomSearch } from './customSearch'
 import { detectLines } from './lines'
 import { detectChaos } from './chaos'
+import { detectChaos2 } from './chaos2'
 import { detectAllStates } from './allStates'
 import { subAnalyzeRule } from './subAnalysis'
 
@@ -92,6 +95,10 @@ export function testRuleAgainstAllTags(parts: RuleParts, customPatterns: CustomP
   // Absence of chaos (tag applied on absence).
   const chaos = detectChaos(parts, { ...CHAOS_DEFAULTS })
   results.push({ tag: CHAOS_TAG, passed: !chaos.isChaotic, kind: 'orthogonal' })
+
+  // Absence of chaos, second principle: too many distinct patterns (tag on absence).
+  const chaos2 = detectChaos2(parts, { ...CHAOS2_DEFAULTS })
+  results.push({ tag: CHAOS2_TAG, passed: !chaos2.isChaotic, kind: 'orthogonal' })
 
   // All states present in the bottom part of the diagram.
   const allStates = detectAllStates(parts, { ...ALL_STATES_DEFAULTS })

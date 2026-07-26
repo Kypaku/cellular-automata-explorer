@@ -49,6 +49,14 @@ export const LINES_TAG = 'NoLines'
 // dominant repeating background (e.g. rule 110) are tagged.
 export const CHAOS_TAG = 'NoChaos'
 
+// Extra, non-exclusive analysis tag produced by the second "chaos" test, which
+// uses a different principle: the diagram is tiled into M×M patterns and the test
+// looks at the DIVERSITY of the pattern set — the share of DISTINCT patterns among
+// all blocks. A chaotic rule keeps inventing new blocks (share → 100%), an ordered
+// one reuses a small vocabulary. Like NoChaos the tag is applied on the INVERSE:
+// `NoChaos2` marks rules whose distinct-pattern share stays within K%.
+export const CHAOS2_TAG = 'NoChaos2'
+
 // Extra, non-exclusive analysis tag produced by the "sub-analysis" test. Each rule
 // is grown across ascending widths; the tag is applied to rules for which a width
 // is found where the space-time diagram becomes spatially uniform (chunk sums stay
@@ -224,6 +232,18 @@ export const CHAOS_DEFAULTS = {
   cutTop: 0, // % of the top (transient) rows discarded before tiling
   blockSize: 4, // M: 5×5 patterns, per the user's request
   maxDominant: 5, // % — max share of the most frequent pattern to still count as chaos
+}
+
+// Default parameters for the standalone "chaos 2" test. Same tiling as the chaos
+// test above, but the verdict comes from the share of DISTINCT patterns among all
+// blocks: the rule is tagged CHAOS2_TAG when that share is at most `maxUnique`%.
+export const CHAOS2_DEFAULTS = {
+  width: 201, // W of the evolved generation
+  height: 200, // H of the evolved generation
+  init: 'random' as 'random' | 'single', // 'random' | 'single'
+  cutTop: 0, // % of the top (transient) rows discarded before tiling
+  blockSize: 4, // M: pattern size
+  maxUnique: 20, // K% — max share of distinct patterns to still count as "no chaos"
 }
 
 // Default parameters for the standalone "all states present" test (run separately

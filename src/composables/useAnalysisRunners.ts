@@ -11,7 +11,7 @@ import type {
   RuleSnapshot,
   SubAnalyzeOptions,
 } from '../types/ca'
-import { ALL_STATES_TAG, CHAOS_TAG, CUSTOM_SEARCH_TAG, FIELDS_TAG, GLIDERS_TAG, LARGE_STRUCTURES_TAG, LINES_TAG } from '../constants/ca'
+import { ALL_STATES_TAG, CHAOS_TAG, CHAOS2_TAG, CUSTOM_SEARCH_TAG, FIELDS_TAG, GLIDERS_TAG, LARGE_STRUCTURES_TAG, LINES_TAG } from '../constants/ca'
 import { partsFromSnapshot } from '../utils/caMath'
 import type { useRuleTags } from './useRuleTags'
 import type { useRuleAnalysis } from './useRuleAnalysis'
@@ -20,6 +20,7 @@ import type { useRuleGlidersAnalysis } from './useRuleGlidersAnalysis'
 import type { useRuleCustomSearchAnalysis } from './useRuleCustomSearchAnalysis'
 import type { useRuleLinesAnalysis } from './useRuleLinesAnalysis'
 import type { useRuleChaosAnalysis } from './useRuleChaosAnalysis'
+import type { useRuleChaos2Analysis } from './useRuleChaos2Analysis'
 import type { useRuleAllStatesAnalysis } from './useRuleAllStatesAnalysis'
 import type { useRuleSubAnalysis } from './useRuleSubAnalysis'
 
@@ -36,6 +37,7 @@ export interface AnalysisRunnersDeps {
   customSearch: ReturnType<typeof useRuleCustomSearchAnalysis>
   lines: ReturnType<typeof useRuleLinesAnalysis>
   chaos: ReturnType<typeof useRuleChaosAnalysis>
+  chaos2: ReturnType<typeof useRuleChaos2Analysis>
   allStates: ReturnType<typeof useRuleAllStatesAnalysis>
   sub: ReturnType<typeof useRuleSubAnalysis>
 }
@@ -183,6 +185,21 @@ interface RunChaosAnalysisPayload {
   targetTag: string
 }
 
+interface RunChaos2AnalysisPayload {
+  from: number
+  to: number
+  width: number
+  height: number
+  init: AnalysisInitMode
+  cutTop: number
+  blockSize: number
+  maxUnique: number
+  sourceMode: AnalysisSourceMode
+  sampleCount: number
+  tags: string[]
+  targetTag: string
+}
+
 interface RunAllStatesAnalysisPayload {
   from: number
   to: number
@@ -215,7 +232,7 @@ interface RunSubAnalysisPayload {
  * "select rule" from the sub-analysis results list back into the rule editor.
  */
 export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
-  const { stateCount, mode, collisionMode, collisionFixed, applyRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, allStates, sub } = deps
+  const { stateCount, mode, collisionMode, collisionFixed, applyRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, chaos2, allStates, sub } = deps
 
   /** Resolves the union of saved rules carrying any of the given tags into
    * classifier-ready inputs (parts + snapshot + display name). */
@@ -478,6 +495,44 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     })
   }
 
+  const chaos2Tracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, CHAOS2_TAG)
+
+  function onRunChaos2Analysis({
+    from,
+    to,
+    width,
+    height,
+    init: chaos2Init,
+    cutTop,
+    blockSize,
+    maxUnique,
+    sourceMode,
+    sampleCount,
+    tags: selectedTags,
+    targetTag,
+  }: RunChaos2AnalysisPayload): void {
+    const tag = String(targetTag || '').trim() || CHAOS2_TAG
+    chaos2Tracker.reset()
+    chaos2.start({
+      stateCount: stateCount.value,
+      mode: mode.value,
+      collisionMode: collisionMode.value,
+      collisionFixed: collisionFixed.value,
+      from,
+      to,
+      width,
+      height,
+      init: chaos2Init,
+      cutTop,
+      blockSize,
+      maxUnique,
+      sourceMode,
+      sampleCount,
+      rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
+      apply: chaos2Tracker.apply(tag),
+    })
+  }
+
   const allStatesTracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, ALL_STATES_TAG)
 
   function onRunAllStatesAnalysis({
@@ -570,6 +625,10 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     onUndoChaosFound: chaosTracker.undo,
     onClearChaosTag: chaosTracker.clear,
     chaosFoundRules: chaosTracker.foundRules,
+    onRunChaos2Analysis,
+    onUndoChaos2Found: chaos2Tracker.undo,
+    onClearChaos2Tag: chaos2Tracker.clear,
+    chaos2FoundRules: chaos2Tracker.foundRules,
     onRunAllStatesAnalysis,
     onUndoAllStatesFound: allStatesTracker.undo,
     onClearAllStatesTag: allStatesTracker.clear,

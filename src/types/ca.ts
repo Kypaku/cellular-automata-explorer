@@ -349,6 +349,37 @@ export interface ChaosResult {
   totalBlocks: number
 }
 
+/** Options for {@link detectChaos2}. */
+export interface Chaos2Options {
+  width: number
+  height: number
+  init: AnalysisInitMode
+  /** Percentage of the top (transient) rows discarded before analysis. */
+  cutTop: number
+  /** Pattern size M: the diagram is tiled into M×M blocks. */
+  blockSize: number
+  /**
+   * Max share (%) of DISTINCT patterns among all blocks the rule may have while
+   * still counting as "not chaotic". A chaotic rule keeps producing new blocks,
+   * so its distinct share approaches 100%.
+   */
+  maxUnique: number
+}
+
+/** Result of {@link detectChaos2}. */
+export interface Chaos2Result {
+  /** True when the distinct-pattern share exceeds maxUnique. */
+  isChaotic: boolean
+  /** Share [0..1] of distinct patterns among all blocks. */
+  uniqueFraction: number
+  /** Number of distinct M×M patterns found. */
+  distinctPatterns: number
+  /** How many of those patterns occur exactly once. */
+  singletonPatterns: number
+  /** Total number of M×M blocks the (kept) diagram was tiled into. */
+  totalBlocks: number
+}
+
 /** Options for {@link detectAllStates}. */
 export interface AllStatesOptions {
   width: number

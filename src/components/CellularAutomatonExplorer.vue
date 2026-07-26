@@ -9,6 +9,7 @@ import { useRuleGlidersAnalysis } from '../composables/useRuleGlidersAnalysis'
 import { useRuleCustomSearchAnalysis } from '../composables/useRuleCustomSearchAnalysis'
 import { useRuleLinesAnalysis } from '../composables/useRuleLinesAnalysis'
 import { useRuleChaosAnalysis } from '../composables/useRuleChaosAnalysis'
+import { useRuleChaos2Analysis } from '../composables/useRuleChaos2Analysis'
 import { useRuleAllStatesAnalysis } from '../composables/useRuleAllStatesAnalysis'
 import { useRuleSubAnalysis } from '../composables/useRuleSubAnalysis'
 import { useTagInteractions } from '../composables/useTagInteractions'
@@ -25,6 +26,7 @@ import GlidersAnalysisPanel from './ca/GlidersAnalysisPanel.vue'
 import CustomSearchPanel from './ca/CustomSearchPanel.vue'
 import LinesAnalysisPanel from './ca/LinesAnalysisPanel.vue'
 import ChaosAnalysisPanel from './ca/ChaosAnalysisPanel.vue'
+import Chaos2AnalysisPanel from './ca/Chaos2AnalysisPanel.vue'
 import AllStatesAnalysisPanel from './ca/AllStatesAnalysisPanel.vue'
 import SubAnalysisPanel from './ca/SubAnalysisPanel.vue'
 
@@ -118,6 +120,9 @@ const { running: linesRunning, done: linesDone, total: linesTotal, progress: lin
 
 const chaosApi = useRuleChaosAnalysis()
 const { running: chaosRunning, done: chaosDone, total: chaosTotal, progress: chaosProgress, currentCode: chaosCurrentCode, found: chaosFound, stop: stopChaosAnalysis } = chaosApi
+
+const chaos2Api = useRuleChaos2Analysis()
+const { running: chaos2Running, done: chaos2Done, total: chaos2Total, progress: chaos2Progress, currentCode: chaos2CurrentCode, found: chaos2Found, stop: stopChaos2Analysis } = chaos2Api
 
 const allStatesApi = useRuleAllStatesAnalysis()
 const { running: allStatesRunning, done: allStatesDone, total: allStatesTotal, progress: allStatesProgress, currentCode: allStatesCurrentCode, found: allStatesFound, stop: stopAllStatesAnalysis } = allStatesApi
@@ -261,6 +266,10 @@ const {
   onUndoChaosFound,
   onClearChaosTag,
   chaosFoundRules,
+  onRunChaos2Analysis,
+  onUndoChaos2Found,
+  onClearChaos2Tag,
+  chaos2FoundRules,
   onRunAllStatesAnalysis,
   onUndoAllStatesFound,
   onClearAllStatesTag,
@@ -283,6 +292,7 @@ const {
   customSearch: customSearchApi,
   lines: linesApi,
   chaos: chaosApi,
+  chaos2: chaos2Api,
   allStates: allStatesApi,
   sub: subApi,
 })
@@ -544,6 +554,28 @@ const {
         @stop="stopChaosAnalysis"
         @undo-found="onUndoChaosFound"
         @clear-tag="onClearChaosTag"
+      />
+    </div>
+
+    <div class="ca-row">
+      <Chaos2AnalysisPanel
+        :state-count="stateCount"
+        :mode="mode"
+        :code-max="codeMax"
+        :running="chaos2Running"
+        :done="chaos2Done"
+        :total="chaos2Total"
+        :progress="chaos2Progress"
+        :current-code="chaos2CurrentCode"
+        :found="chaos2Found"
+        :can-undo-found="chaos2FoundRules.length > 0"
+        :tags="tags"
+        :tag-counts="tagCounts"
+        :rules="rules"
+        @run="onRunChaos2Analysis"
+        @stop="stopChaos2Analysis"
+        @undo-found="onUndoChaos2Found"
+        @clear-tag="onClearChaos2Tag"
       />
     </div>
 
