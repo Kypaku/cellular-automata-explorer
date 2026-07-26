@@ -20,6 +20,7 @@ export interface AllStatesAnalysisStartParams {
   stateCount: number
   mode: RuleMode
   neighborhood?: number
+  depth?: number
   collisionMode?: CollisionMode
   collisionFixed?: number
   from: number
@@ -72,8 +73,8 @@ export function useRuleAllStatesAnalysis() {
     const to = Math.max(from, Math.floor(params.to))
     const ruleItems = params.sourceMode === 'tags' ? params.rules || [] : null
     const randomLocalRules =
-      params.sourceMode === 'random' && mode === 'local' && localCodeExceedsSafeInteger(stateCount, params.neighborhood)
-        ? pickRandomLocalRules(stateCount, params.sampleCount || 1, params.neighborhood)
+      params.sourceMode === 'random' && mode === 'local' && localCodeExceedsSafeInteger(stateCount, params.neighborhood, params.depth)
+        ? pickRandomLocalRules(stateCount, params.sampleCount || 1, params.neighborhood, params.depth)
         : null
     const randomCodes =
       params.sourceMode === 'random' && !randomLocalRules
@@ -118,6 +119,7 @@ export function useRuleAllStatesAnalysis() {
             code,
             localRule: localRuleOverride,
             neighborhood: params.neighborhood,
+            depth: params.depth,
             collisionMode: params.collisionMode,
             collisionFixed: params.collisionFixed,
           }

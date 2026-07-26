@@ -282,6 +282,8 @@ const {
 } = useAnalysisRunners({
   stateCount,
   mode,
+  neighborhood,
+  depth,
   collisionMode,
   collisionFixed,
   applyRuleSnapshot,

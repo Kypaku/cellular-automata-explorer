@@ -27,6 +27,8 @@ import type { useRuleSubAnalysis } from './useRuleSubAnalysis'
 export interface AnalysisRunnersDeps {
   stateCount: Ref<number>
   mode: Ref<RuleMode>
+  neighborhood: Ref<number>
+  depth: Ref<number>
   collisionMode: Ref<CollisionMode>
   collisionFixed: Ref<number>
   applyRuleSnapshot: (snapshot: RuleSnapshot) => void
@@ -232,7 +234,7 @@ interface RunSubAnalysisPayload {
  * "select rule" from the sub-analysis results list back into the rule editor.
  */
 export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
-  const { stateCount, mode, collisionMode, collisionFixed, applyRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, chaos2, allStates, sub } = deps
+  const { stateCount, mode, neighborhood, depth, collisionMode, collisionFixed, applyRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, chaos2, allStates, sub } = deps
 
   /** Resolves the union of saved rules carrying any of the given tags into
    * classifier-ready inputs (parts + snapshot + display name). */
@@ -266,6 +268,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     analysis.start({
       stateCount: stateCount.value,
       mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
       collisionMode: collisionMode.value,
       collisionFixed: collisionFixed.value,
       from,
@@ -304,6 +308,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     fields.start({
       stateCount: stateCount.value,
       mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
       collisionMode: collisionMode.value,
       collisionFixed: collisionFixed.value,
       from,
@@ -350,6 +356,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     gliders.start({
       stateCount: stateCount.value,
       mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
       collisionMode: collisionMode.value,
       collisionFixed: collisionFixed.value,
       from,
@@ -394,6 +402,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     customSearch.start({
       stateCount: stateCount.value,
       mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
       collisionMode: collisionMode.value,
       collisionFixed: collisionFixed.value,
       from,
@@ -435,6 +445,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     lines.start({
       stateCount: stateCount.value,
       mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
       collisionMode: collisionMode.value,
       collisionFixed: collisionFixed.value,
       from,
@@ -478,6 +490,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     chaos.start({
       stateCount: stateCount.value,
       mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
       collisionMode: collisionMode.value,
       collisionFixed: collisionFixed.value,
       from,
@@ -516,6 +530,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     chaos2.start({
       stateCount: stateCount.value,
       mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
       collisionMode: collisionMode.value,
       collisionFixed: collisionFixed.value,
       from,
@@ -552,6 +568,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     allStates.start({
       stateCount: stateCount.value,
       mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
       collisionMode: collisionMode.value,
       collisionFixed: collisionFixed.value,
       from,
@@ -585,6 +603,8 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     sub.start({
       stateCount: stateCount.value,
       mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
       collisionMode: collisionMode.value,
       collisionFixed: collisionFixed.value,
       sourceMode,

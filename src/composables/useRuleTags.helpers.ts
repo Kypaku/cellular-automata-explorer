@@ -55,9 +55,20 @@ export function signatureOf(parts: RuleParts): string {
   if (parts.mode === 'descendants') {
     return `${parts.stateCount}|descendants|${parts.emissionRule || ''}|${parts.collisionMode || 'sum'}|${parts.collisionFixed ?? 0}`
   }
+  // The neighborhood/depth suffix is appended only when it differs from the
+  // classic 3-cell single-row rule, so signatures saved before those features
+  // existed stay valid.
+  const shape = shapeSuffix(parts)
   return parts.mode === 'totalistic'
-    ? `${parts.stateCount}|totalistic|${parts.code}`
-    : `${parts.stateCount}|local|${parts.localRule}`
+    ? `${parts.stateCount}|totalistic|${parts.code}${shape}`
+    : `${parts.stateCount}|local|${parts.localRule}${shape}`
+}
+
+/** `|neighborhood|depth` suffix, empty for the default 3-cell / 1-row shape. */
+function shapeSuffix(parts: RuleParts): string {
+  const neighborhood = parts.neighborhood ?? 3
+  const depth = parts.depth ?? 1
+  return neighborhood === 3 && depth === 1 ? '' : `|${neighborhood}|${depth}`
 }
 
 export function defaultRuleName(parts: RuleParts): string {
@@ -65,7 +76,10 @@ export function defaultRuleName(parts: RuleParts): string {
     const collision = parts.collisionMode === 'fixed' ? `fixed ${parts.collisionFixed ?? 0}` : parts.collisionMode || 'sum'
     return `${parts.stateCount} states, descendants ${parts.emissionRule || ''} (${collision})`
   }
+  const neighborhood = parts.neighborhood ?? 3
+  const depth = parts.depth ?? 1
+  const shape = neighborhood === 3 && depth === 1 ? '' : `, ${neighborhood} cells x ${depth} rows`
   return parts.mode === 'totalistic'
-    ? `${parts.stateCount} states, totalistic ${parts.code}`
-    : `${parts.stateCount} states, local ${parts.localRule}`
+    ? `${parts.stateCount} states, totalistic ${parts.code}${shape}`
+    : `${parts.stateCount} states, local ${parts.localRule}${shape}`
 }
