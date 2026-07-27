@@ -6,7 +6,7 @@ import {
   CUSTOM_SEARCH_STORAGE_KEY,
   CUSTOM_ANY,
   CUSTOM_VAR_MAX,
-  CA_COLORS,
+  stateColor,
   isCustomVar,
   customVarIndex,
   customVarValue,
@@ -14,6 +14,7 @@ import {
   customVarColor,
 } from '../../constants/ca'
 import type { AnalysisRunConfig, CustomPattern, TaggedRule } from '../../types/ca'
+import { stateChar } from '../../utils/caMath'
 import AnalysisRunControls from './AnalysisRunControls.vue'
 import TagTargetSelector from './TagTargetSelector.vue'
 import TagFoundActions from './TagFoundActions.vue'
@@ -258,7 +259,7 @@ function cellStyle(value: number): Record<string, string> {
   if (isCustomVar(value)) {
     return { backgroundColor: customVarColor(customVarIndex(value)) }
   }
-  return { backgroundColor: CA_COLORS[value] || '#000' }
+  return { backgroundColor: stateColor(value) }
 }
 
 function cellLabel(value: number): string {
@@ -268,7 +269,7 @@ function cellLabel(value: number): string {
   if (isCustomVar(value)) {
     return customVarLabel(customVarIndex(value))
   }
-  return String(value)
+  return stateChar(value)
 }
 
 function cellTitle(value: number): string {

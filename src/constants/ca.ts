@@ -3,6 +3,42 @@ export const CA_WIDTH = 401 // number of cells per row
 export const CA_PIXEL_SIZE = 3 // canvas pixels per cell
 export const CA_COLORS = ['#f4f7f8', '#7ba9c0', '#ca9077', '#8fbf7f', '#dba6e0'] // index 0 = dead, 1-4 = states
 
+/** Converts an HSL colour (h in degrees, s/l in 0..1) into a `#rrggbb` string. */
+function hslToHex(h: number, s: number, l: number): string {
+  const a = s * Math.min(l, 1 - l)
+  const channel = (n: number): string => {
+    const k = (n + h / 30) % 12
+    const value = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
+    return Math.round(value * 255)
+      .toString(16)
+      .padStart(2, '0')
+  }
+  return `#${channel(0)}${channel(8)}${channel(4)}`
+}
+
+/**
+ * Colour of cell state `index`. The first five come from the curated palette
+ * above; anything beyond that (only reachable through the experimental custom
+ * state count) is generated deterministically along the golden angle, so
+ * consecutive states stay visually distinct.
+ */
+export function stateColor(index: number): string {
+  if (index >= 0 && index < CA_COLORS.length) {
+    return CA_COLORS[index]
+  }
+  const hue = ((index - CA_COLORS.length + 1) * 137.508) % 360
+  return hslToHex(hue, 0.45, 0.62)
+}
+
+/** Builds the full colour palette (index = state value) for `states` states. */
+export function statePalette(states: number): string[] {
+  const palette: string[] = []
+  for (let s = 0; s < Math.max(1, states); s++) {
+    palette.push(stateColor(s))
+  }
+  return palette
+}
+
 // Canonical tag names produced by the automatic rule analysis / classification.
 export const ANALYSIS_TAGS = {
   DEAD: 'Dead',

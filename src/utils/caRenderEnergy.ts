@@ -9,7 +9,7 @@
 // colliding contributions add up on the target cell, so the total energy of a
 // row is conserved from one generation to the next (aside from the rare case
 // of a live parent whose emission rule emits no children at all).
-import { CA_COLORS, CA_PIXEL_SIZE } from '../constants/ca'
+import { CA_PIXEL_SIZE, stateColor } from '../constants/ca'
 import type { CaConfig, CollisionMode } from '../types/ca'
 import { resolveCollision } from './caRender'
 
@@ -19,15 +19,25 @@ function hexToRgb(hex: string): [number, number, number] {
   return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
 }
 
-const STATE_RGB = CA_COLORS.map(hexToRgb)
-const BG_RGB = STATE_RGB[0]
+// State colours are resolved lazily (the state count is not fixed at 5 anymore).
+const RGB_CACHE = new Map<number, [number, number, number]>()
+
+function stateRgb(state: number): [number, number, number] {
+  let rgb = RGB_CACHE.get(state)
+  if (!rgb) {
+    rgb = hexToRgb(stateColor(state))
+    RGB_CACHE.set(state, rgb)
+  }
+  return rgb
+}
 
 /** Blends state `s`'s colour toward the background by `t` (0 = background, 1 = full colour). */
 function energyFill(s: number, t: number): string {
-  const c = STATE_RGB[s] || STATE_RGB[STATE_RGB.length - 1]
-  const r = Math.round(BG_RGB[0] + (c[0] - BG_RGB[0]) * t)
-  const g = Math.round(BG_RGB[1] + (c[1] - BG_RGB[1]) * t)
-  const b = Math.round(BG_RGB[2] + (c[2] - BG_RGB[2]) * t)
+  const c = stateRgb(s)
+  const bg = stateRgb(0)
+  const r = Math.round(bg[0] + (c[0] - bg[0]) * t)
+  const g = Math.round(bg[1] + (c[1] - bg[1]) * t)
+  const b = Math.round(bg[2] + (c[2] - bg[2]) * t)
   return `rgb(${r},${g},${b})`
 }
 
@@ -161,7 +171,7 @@ function paintEnergyDiagram(
   energy: Float64Array[]
 ): void {
   const height = states.length
-  ctx.fillStyle = CA_COLORS[0]
+  ctx.fillStyle = stateColor(0)
   ctx.fillRect(0, 0, width * CA_PIXEL_SIZE, height * CA_PIXEL_SIZE)
 
   let maxEnergy = 0

@@ -1,5 +1,5 @@
 import { ref, reactive, computed } from 'vue'
-import { CA_WIDTH, CA_COLORS } from '../constants/ca'
+import { CA_WIDTH, statePalette } from '../constants/ca'
 import {
   getConfig,
   sanitizeStateString,
@@ -14,6 +14,7 @@ import {
   localCodeExceedsSafeInteger,
   cycleLocalRuleDigit,
   cycleTotalisticDigit,
+  stateChar,
   defaultEmissionRule,
   sanitizeEmissionRule,
   descendantsCodeMax,
@@ -33,15 +34,15 @@ function inputValue(event: Event): string {
 }
 
 /**
- * Encapsulates all state and behaviour of the 2-5 state cellular
+ * Encapsulates all state and behaviour of the multi-state cellular
  * automaton explorer: rule selection (totalistic or local), initial
  * conditions, canvas rendering and the derived UI text/legend data.
  */
 export function useCellularAutomaton() {
   const H = ref(220)
   const W = ref(CA_WIDTH)
-  const mode = ref<RuleMode>('local') // 'totalistic' | 'local'
-  const stateCount = ref(2) // 2 | 3 | 4 | 5
+  const mode = ref<RuleMode>('local') // 'totalistic' | 'local' | 'descendants'
+  const stateCount = ref(2) // 2..MAX_STATE_COUNT (anything above 5 is experimental)
   const neighborhood = ref(3) // 3 | 5 | 7 cells read from the previous row (totalistic/local only)
   const depth = ref(1) // how many previous rows the rule depends on (1 = classic; totalistic/local only)
   const init = ref<InitMode>('single') // 'single' | 'random' | 'custom'
@@ -58,6 +59,29 @@ export function useCellularAutomaton() {
 
   const sliderLabelText = ref('')
   const codeMax = ref(2186)
+
+  /** Colours of the current state set (index = state value), used by the legend/view panels. */
+  const palette = computed(() => statePalette(stateCount.value))
+
+  /**
+   * Makes sure the per-state-count dictionaries have an entry for `count`.
+   * They are pre-filled for the curated 2-5 counts; custom counts are created
+   * on demand the first time the user selects them.
+   */
+  function ensureStateEntries(count: number): void {
+    if (totalisticCodes[count] === undefined) {
+      totalisticCodes[count] = 0
+    }
+    if (localRules[count] === undefined) {
+      localRules[count] = ''
+    }
+    if (localRuleDirty[count] === undefined) {
+      localRuleDirty[count] = false
+    }
+    if (seedValues[count] === undefined) {
+      seedValues[count] = ''
+    }
+  }
 
   // "Descendants" rule mode: per-state emission rules + collision strategy + energy toggle.
   const descendants = useCaDescendantsRule(stateCount, { mode, refresh, setMode })
@@ -87,7 +111,7 @@ export function useCellularAutomaton() {
     }
     let sample = ''
     for (let digit = 0; digit < stateCount.value; digit++) {
-      sample += String(digit).repeat(2)
+      sample += stateChar(digit).repeat(2)
     }
     return `e.g. ${sample}0`
   })
@@ -285,7 +309,7 @@ export function useCellularAutomaton() {
     } else {
       let randomRule = ''
       for (let i = 0; i < config.localDigits; i++) {
-        randomRule += String(Math.floor(Math.random() * config.states))
+        randomRule += stateChar(Math.floor(Math.random() * config.states))
       }
       ruleInputValue.value = randomRule
       localRules[stateCount.value] = randomRule
@@ -364,15 +388,17 @@ export function useCellularAutomaton() {
   }
 
   function setStateCount(nextCount: number): void {
-    if (nextCount === stateCount.value) {
+    const count = normalizeStateCount(nextCount)
+    if (count === stateCount.value) {
       return
     }
     storeCurrentRule()
     storeCurrentSeed()
     storeCurrentEmission()
-    stateCount.value = nextCount
-    ruleInputValue.value = localRules[nextCount]
-    seedInputValue.value = seedValues[nextCount]
+    ensureStateEntries(count)
+    stateCount.value = count
+    ruleInputValue.value = localRules[count]
+    seedInputValue.value = seedValues[count]
     syncDescendantsInputs()
     syncLocalRule(false)
     refresh()
@@ -425,6 +451,7 @@ export function useCellularAutomaton() {
       storeCurrentRule()
       storeCurrentSeed()
     }
+    ensureStateEntries(nextStateCount)
     stateCount.value = nextStateCount
     neighborhood.value = normalizeNeighborhood(snapshot.neighborhood)
     depth.value = normalizeDepth(snapshot.depth)
@@ -448,7 +475,7 @@ export function useCellularAutomaton() {
 
   return {
     // constants re-exported for template use
-    COL: CA_COLORS,
+    COL: palette,
     // dom ref
     canvasRef,
     // state

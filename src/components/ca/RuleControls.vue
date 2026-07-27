@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { MAX_STATE_COUNT, SAFE_STATE_COUNT } from '../../utils/caMath'
 
 const props = defineProps<{
   stateCount: number
@@ -25,6 +26,20 @@ const props = defineProps<{
 const ruleMaxLength = computed(() => Math.pow(props.stateCount, props.neighborhood * Math.max(1, props.depth)))
 const emissionMaxLength = computed(() => 3 * (props.stateCount - 1))
 const maxFixed = computed(() => props.stateCount - 1)
+const experimentalStates = computed(() => props.stateCount > SAFE_STATE_COUNT)
+
+/**
+ * Applies the free-form state count input. Fired on `change` (not `input`) so
+ * a half-typed number never resets the whole rule.
+ */
+function onCustomStateCount(event: Event): void {
+  const raw = (event.target as HTMLInputElement).value
+  const value = parseInt(raw, 10)
+  if (isNaN(value)) {
+    return
+  }
+  emit('set-state-count', Math.max(2, Math.min(MAX_STATE_COUNT, value)))
+}
 
 const emit = defineEmits([
   'set-state-count',
@@ -57,6 +72,23 @@ const emit = defineEmits([
           <button type="button" :class="{ on: stateCount === 3 }" @click="emit('set-state-count', 3)">3 colors</button>
           <button type="button" :class="{ on: stateCount === 4 }" @click="emit('set-state-count', 4)">4 colors</button>
           <button type="button" :class="{ on: stateCount === 5 }" @click="emit('set-state-count', 5)">5 colors</button>
+        </span>
+        <input
+          class="ca-number ca-number--sm"
+          type="number"
+          min="2"
+          :max="MAX_STATE_COUNT"
+          step="1"
+          :value="stateCount"
+          :title="`custom number of states (2-${MAX_STATE_COUNT}); more than ${SAFE_STATE_COUNT} is experimental`"
+          @change="onCustomStateCount"
+        />
+      </div>
+
+      <div class="ca-field" v-if="experimentalStates">
+        <span class="ca-meter">
+          {{ stateCount }} states is experimental: rule spaces explode, colours past 5 are generated
+          automatically and states 10+ are written as letters (a, b, c …). Use at your own risk.
         </span>
       </div>
 

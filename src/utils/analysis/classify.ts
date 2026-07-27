@@ -12,7 +12,7 @@
 //   Complex  -> class 4 (sparse localized persistent structures)
 //   Undefined-> nothing conclusive within H generations
 import { ANALYSIS_TAGS } from '../../constants/ca'
-import { getConfig, totalisticTable, padRight, sanitizeStateString, normalizeStateCount } from '../caMath'
+import { getConfig, totalisticTable, padRight, sanitizeStateString, normalizeStateCount, stateDigitFromCharCode } from '../caMath'
 import type { AnalysisInitMode, ClassifyOptions, ClassifyResult, ClassifyStats, RuleParts } from '../../types/ca'
 import { buildInitialRow, hashString, mulberry32 } from './shared'
 
@@ -115,8 +115,8 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
             index = index * states + r[(k + d + width) % width]
           }
         }
-        const ch = (ruleStr as string).charCodeAt(index)
-        next[k] = ch >= 48 ? ch - 48 : 0
+        const digit = stateDigitFromCharCode((ruleStr as string).charCodeAt(index))
+        next[k] = digit >= 0 ? digit : 0
       }
     }
     prevRow = row

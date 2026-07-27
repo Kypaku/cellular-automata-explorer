@@ -7,6 +7,7 @@ import {
   normalizeStateCount,
   emissionTable,
   clampCollisionFixed,
+  stateDigitFromCharCode,
 } from '../caMath'
 import type { AnalysisInitMode, CollisionMode, EvolveOptions, EvolveResult, RuleParts } from '../../types/ca'
 import { buildInitialRow, hashString, mulberry32 } from './shared'
@@ -88,8 +89,8 @@ export function evolveRows(parts: RuleParts, options: EvolveOptions): EvolveResu
             index = index * states + r[(k + d + width) % width]
           }
         }
-        const ch = ruleStr.charCodeAt(index)
-        next[k] = ch >= 48 ? ch - 48 : 0
+        const digit = stateDigitFromCharCode(ruleStr.charCodeAt(index))
+        next[k] = digit >= 0 ? digit : 0
       } else {
         const em = emission as number[]
         const a = left === 0 ? 0 : em[(left - 1) * 3 + 2]

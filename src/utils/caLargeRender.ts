@@ -14,7 +14,7 @@
 // This keeps memory to ~one row plus the compressed output and sidesteps the
 // canvas size limit entirely. Supports both up-scaling (N pixels per cell) and
 // down-scaling (N cells per pixel), the latter being what large fields need.
-import { CA_COLORS } from '../constants/ca'
+import { statePalette } from '../constants/ca'
 import { evolveStep } from './caRender'
 import type { CaConfig, CollisionMode, RuleMode } from '../types/ca'
 
@@ -155,7 +155,7 @@ export async function renderDiagramToPngBlob(params: PngDiagramParams): Promise<
   const factor = Math.max(1, Math.floor(cellSize))
   const { outWidth, outHeight } = outputSize(width, height, factor, downscale)
 
-  const palette = CA_COLORS.map(hexToRgb)
+  const palette = statePalette(config.states).map(hexToRgb)
   const stride = outWidth * 3
   // Reused scanline buffer: 1 filter byte (0 = "none") + RGB pixels.
   const scan = new Uint8Array(1 + stride)

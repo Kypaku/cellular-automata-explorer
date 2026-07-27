@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue'
-import { CA_COLORS } from '../constants/ca'
-import { sanitizeStateString, toBaseN, totalisticTable } from '../utils/caMath'
+import { stateColor } from '../constants/ca'
+import { sanitizeStateString, stateChar, stateDigitAt, toBaseN, totalisticTable } from '../utils/caMath'
 import type { CaConfig, LegendItem, RuleMode } from '../types/ca'
 
 /** Upper bound on legend squares drawn, so a huge multi-row local rule can't freeze the DOM. */
@@ -78,7 +78,7 @@ export function useCaStatusText(deps: CaStatusTextDeps) {
       keyText.value = depth > 1 ? `neighbor sum map (over last ${depth} rows) -> new state` : 'neighbor sum map -> new state'
       const sums = totalisticTable(totalisticCodes[stateCount.value], stateCount.value, config.neighborhood, config.depth)
       for (let sum = 0; sum < config.totalisticDigits; sum++) {
-        items.push({ color: CA_COLORS[sums[sum]], caption: `S=${sum}` })
+        items.push({ color: stateColor(sums[sum]), caption: `S=${sum}` })
       }
     } else if (mode.value === 'descendants') {
       keyText.value = 'descendants: live parent state -> (L,C,R) children, collisions merged by the collision rule'
@@ -87,7 +87,7 @@ export function useCaStatusText(deps: CaStatusTextDeps) {
       for (let s = 1; s < config.states; s++) {
         for (let slot = 0; slot < 3; slot++) {
           const out = emission[(s - 1) * 3 + slot]
-          items.push({ color: CA_COLORS[out], caption: `${s}${slots[slot]}->${out}` })
+          items.push({ color: stateColor(out), caption: `${stateChar(s)}${slots[slot]}->${stateChar(out)}` })
         }
       }
     } else {
@@ -97,10 +97,10 @@ export function useCaStatusText(deps: CaStatusTextDeps) {
       // Cap the number of squares so a huge multi-row rule can't freeze the DOM.
       const shown = Math.min(config.localDigits, LEGEND_ITEM_CAP)
       for (let index = 0; index < shown; index++) {
-        const ch = rule.charCodeAt(index)
+        const digit = stateDigitAt(rule, index)
         items.push({
-          color: CA_COLORS[ch >= 48 ? ch - 48 : 0],
-          caption: `${toBaseN(index, config.taps, config.states)}->${ch >= 48 ? String.fromCharCode(ch) : '0'}`,
+          color: stateColor(digit),
+          caption: `${toBaseN(index, config.taps, config.states)}->${stateChar(digit)}`,
         })
       }
     }

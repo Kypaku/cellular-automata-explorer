@@ -3,10 +3,52 @@
 
 import type { CaConfig, CollisionMode, RuleParts, RuleSnapshot } from '../types/ca'
 
-/** Clamps an arbitrary value to one of the supported state counts (2-5), defaulting to 3. */
+/**
+ * Cell-state digits: the index is the state value, the character is how that
+ * state appears inside every rule / seed / emission string. States 0-9 keep
+ * their classic decimal characters, so rules saved before custom state counts
+ * existed stay valid; 10+ continue into 'a'..'z'.
+ */
+export const STATE_DIGITS = '0123456789abcdefghijklmnopqrstuvwxyz'
+
+/**
+ * Largest supported number of states. Every rule string stores one state per
+ * character, so this is the ceiling of the base-36 digit alphabet above.
+ * Anything past 5 states is experimental ("at your own risk"): the rule spaces
+ * grow explosively and only random sampling stays practical.
+ */
+export const MAX_STATE_COUNT = STATE_DIGITS.length
+
+/** The recommended, fully curated state counts (everything else is experimental). */
+export const SAFE_STATE_COUNT = 5
+
+// Fast char-code → state-value lookup used by the evolution hot loops.
+const CHAR_TO_DIGIT = new Int8Array(128).fill(-1)
+for (let i = 0; i < STATE_DIGITS.length; i++) {
+  CHAR_TO_DIGIT[STATE_DIGITS.charCodeAt(i)] = i
+  CHAR_TO_DIGIT[STATE_DIGITS.toUpperCase().charCodeAt(i)] = i
+}
+
+/** The character representing state `value` ('0' for out-of-range values). */
+export function stateChar(value: number): string {
+  return STATE_DIGITS.charAt(value) || '0'
+}
+
+/** The state value of a character code, or -1 when it is not a state digit. */
+export function stateDigitFromCharCode(code: number): number {
+  return code >= 0 && code < 128 ? CHAR_TO_DIGIT[code] : -1
+}
+
+/** The state value at `index` of a rule/seed string; unknown characters read as 0. */
+export function stateDigitAt(text: string, index: number): number {
+  const digit = stateDigitFromCharCode(text.charCodeAt(index))
+  return digit >= 0 ? digit : 0
+}
+
+/** Clamps an arbitrary value to a supported state count (2..MAX_STATE_COUNT), defaulting to 3. */
 export function normalizeStateCount(value: unknown): number {
   const n = Math.floor(Number(value))
-  return n >= 2 && n <= 5 ? n : 3
+  return n >= 2 && n <= MAX_STATE_COUNT ? n : 3
 }
 
 /** Clamps an arbitrary value to a supported neighborhood size (3, 5 or 7), defaulting to 3. */
@@ -65,7 +107,7 @@ export function partsFromSnapshot(snapshot: RuleSnapshot): RuleParts {
  * Derives all the size/range values that depend on the number of states, the
  * neighborhood size (how many cells of each row the rule reads) and the depth
  * (how many previous rows the rule reads).
- * @param states number of cell states (2-5)
+ * @param states number of cell states (2..MAX_STATE_COUNT)
  * @param neighborhood cells read from each row (3, 5 or 7; default 3)
  * @param depth previous rows the rule reads (1..MAX_DEPTH; default 1)
  */
@@ -93,9 +135,9 @@ export function sanitizeStateString(text: unknown, maxLen: number | undefined, s
   const source = String(text || '')
   let clean = ''
   for (let i = 0; i < source.length; i++) {
-    const digit = source.charCodeAt(i) - 48
+    const digit = stateDigitFromCharCode(source.charCodeAt(i))
     if (digit >= 0 && digit <= config.maxDigit) {
-      clean += source.charAt(i)
+      clean += stateChar(digit)
       if (typeof maxLen === 'number' && clean.length >= maxLen) {
         break
       }
@@ -128,7 +170,7 @@ export function toBaseN(value: number, width: number, base: number): string {
   let out = ''
   let remaining = value
   while (out.length < width) {
-    out = String(remaining % base) + out
+    out = stateChar(remaining % base) + out
     remaining = Math.floor(remaining / base)
   }
   return out
@@ -156,7 +198,7 @@ export function buildLocalRuleFromTotalistic(code: number, states: number, neigh
       sum += remaining % config.states
       remaining = Math.floor(remaining / config.states)
     }
-    rule += String(sums[sum])
+    rule += stateChar(sums[sum])
   }
   return rule
 }
@@ -175,7 +217,7 @@ export function localRuleToCode(rule: string, states: number, neighborhood: numb
   const clean = padRight(sanitizeStateString(rule, config.localDigits, states), config.localDigits)
   let code = 0
   for (let i = clean.length - 1; i >= 0; i--) {
-    code = code * config.states + (clean.charCodeAt(i) - 48)
+    code = code * config.states + stateDigitAt(clean, i)
   }
   return code
 }
@@ -191,9 +233,9 @@ export function cycleLocalRuleDigit(rule: string, states: number, index: number,
   if (index < 0 || index >= clean.length) {
     return clean
   }
-  const current = clean.charCodeAt(index) - 48
+  const current = stateDigitAt(clean, index)
   const next = (current + 1) % states
-  return clean.slice(0, index) + String(next) + clean.slice(index + 1)
+  return clean.slice(0, index) + stateChar(next) + clean.slice(index + 1)
 }
 
 /**
@@ -267,7 +309,7 @@ export function randomLocalRule(states: number, neighborhood: number = 3, depth:
   const length = Math.min(config.localDigits, LOCAL_MATERIALIZE_LIMIT)
   let rule = ''
   for (let i = 0; i < length; i++) {
-    rule += String(Math.floor(Math.random() * config.states))
+    rule += stateChar(Math.floor(Math.random() * config.states))
   }
   return rule
 }
@@ -294,7 +336,7 @@ export function codeToLocalRule(code: number, states: number, neighborhood: numb
   let rule = ''
   let remaining = normalized
   for (let i = 0; i < config.localDigits; i++) {
-    rule += String(remaining % config.states)
+    rule += stateChar(remaining % config.states)
     remaining = Math.floor(remaining / config.states)
   }
   return rule
@@ -347,7 +389,7 @@ export function defaultEmissionRule(states: number): string {
   const count = normalizeStateCount(states)
   let rule = ''
   for (let s = 1; s < count; s++) {
-    rule += String(s).repeat(3)
+    rule += stateChar(s).repeat(3)
   }
   return rule
 }
@@ -363,7 +405,7 @@ export function emissionTable(rule: string, states: number): number[] {
   const clean = sanitizeEmissionRule(rule, states)
   const table: number[] = []
   for (let i = 0; i < clean.length; i++) {
-    table.push(clean.charCodeAt(i) - 48)
+    table.push(stateDigitAt(clean, i))
   }
   return table
 }
@@ -374,8 +416,8 @@ export function cycleEmissionDigit(rule: string, states: number, index: number):
   if (index < 0 || index >= clean.length) {
     return clean
   }
-  const next = (clean.charCodeAt(index) - 48 + 1) % normalizeStateCount(states)
-  return clean.slice(0, index) + String(next) + clean.slice(index + 1)
+  const next = (stateDigitAt(clean, index) + 1) % normalizeStateCount(states)
+  return clean.slice(0, index) + stateChar(next) + clean.slice(index + 1)
 }
 
 /** A uniformly random emission rule (each of `3 * (states - 1)` digits random). */
@@ -383,7 +425,7 @@ export function randomEmissionRule(states: number): string {
   const count = normalizeStateCount(states)
   let rule = ''
   for (let i = 0; i < emissionDigits(count); i++) {
-    rule += String(Math.floor(Math.random() * count))
+    rule += stateChar(Math.floor(Math.random() * count))
   }
   return rule
 }
@@ -407,7 +449,7 @@ export function codeToEmissionRule(code: number, states: number): string {
   let rule = ''
   let remaining = normalized
   for (let i = 0; i < digits; i++) {
-    rule += String(remaining % count)
+    rule += stateChar(remaining % count)
     remaining = Math.floor(remaining / count)
   }
   return rule

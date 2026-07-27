@@ -302,7 +302,7 @@ const {
 
 <template>
   <div class="ca-wrap">
-    <h2 class="sr-only">One-dimensional cellular automaton simulator with 2-5 states, totalistic and local rules</h2>
+    <h2 class="sr-only">One-dimensional cellular automaton simulator with a configurable number of states, totalistic and local rules</h2>
 
     <div class="ca-layout">
     <div class="ca-main">

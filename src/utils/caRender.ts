@@ -1,7 +1,7 @@
 // Pure canvas rendering + evolution for the explorer's space-time diagram.
 // Kept framework-agnostic so useCellularAutomaton only wires reactive state to it.
-import { CA_COLORS, CA_PIXEL_SIZE } from '../constants/ca'
-import { sanitizeStateString } from './caMath'
+import { CA_PIXEL_SIZE, statePalette } from '../constants/ca'
+import { sanitizeStateString, stateDigitAt, stateDigitFromCharCode } from './caMath'
 import type { CaConfig, CollisionMode, InitMode, RuleMode } from '../types/ca'
 
 /** Builds the first row from the chosen init mode (single / random / custom seed). */
@@ -25,7 +25,7 @@ export function buildInitialRow(
     }
     const offset = Math.max(0, Math.floor((width - seed.length) / 2))
     for (let i = 0; i < seed.length && i < width; i++) {
-      row[offset + i] = seed.charCodeAt(i) - 48
+      row[offset + i] = stateDigitAt(seed, i)
     }
     return row
   }
@@ -114,7 +114,8 @@ export function evolveStep(
       }
       const ch = explicitRule.charCodeAt(index)
       // Unfilled / out-of-range neighborhoods (e.g. an un-materialized huge rule) are state 0.
-      value = ch >= 48 ? ch - 48 : 0
+      const digit = stateDigitFromCharCode(ch)
+      value = digit >= 0 ? digit : 0
     } else {
       // Descendants: each child gathers up to 3 emitted contributions from the
       // current row. Background (state 0) emits nothing; a live parent's triple
@@ -201,11 +202,11 @@ export {
 } from './caRenderEnergy'
 
 /** Draws a single already-computed row of cells at row index `y` onto `ctx`. */
-function paintRow(ctx: CanvasRenderingContext2D, row: Uint8Array, width: number, y: number): void {
+function paintRow(ctx: CanvasRenderingContext2D, row: Uint8Array, width: number, y: number, palette: string[]): void {
   for (let x = 0; x < width; x++) {
     const state = row[x]
     if (state) {
-      ctx.fillStyle = CA_COLORS[state]
+      ctx.fillStyle = palette[state] || palette[palette.length - 1]
       ctx.fillRect(x * CA_PIXEL_SIZE, y * CA_PIXEL_SIZE, CA_PIXEL_SIZE, CA_PIXEL_SIZE)
     }
   }
@@ -221,7 +222,8 @@ export function renderDiagram(params: RenderDiagramParams): Uint8Array[] {
   const { ctx, width, height, config, mode, sums, explicitRule, emission, collisionMode, collisionFixed, noiseP } =
     params
 
-  ctx.fillStyle = CA_COLORS[0]
+  const palette = statePalette(config.states)
+  ctx.fillStyle = palette[0]
   ctx.fillRect(0, 0, width * CA_PIXEL_SIZE, height * CA_PIXEL_SIZE)
 
   // Rolling window of the last `depth` rows (oldest → newest). It is primed with
@@ -237,7 +239,7 @@ export function renderDiagram(params: RenderDiagramParams): Uint8Array[] {
   for (let y = 0; y < height; y++) {
     const row = window[window.length - 1]
     rowsData[y] = row.slice()
-    paintRow(ctx, row, width, y)
+    paintRow(ctx, row, width, y, palette)
     const next = evolveStep(window, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed)
     window.push(next)
     window.shift()
@@ -275,13 +277,14 @@ export function extendDiagram(params: ExtendDiagramParams): Uint8Array[] {
     params
   const totalHeight = previousRows.length + extraRows
 
-  ctx.fillStyle = CA_COLORS[0]
+  const palette = statePalette(config.states)
+  ctx.fillStyle = palette[0]
   ctx.fillRect(0, 0, width * CA_PIXEL_SIZE, totalHeight * CA_PIXEL_SIZE)
 
   const rowsData: Uint8Array[] = new Array(totalHeight)
   for (let y = 0; y < previousRows.length; y++) {
     rowsData[y] = previousRows[y]
-    paintRow(ctx, previousRows[y], width, y)
+    paintRow(ctx, previousRows[y], width, y, palette)
   }
   // Seed the rolling window from the last `depth` already-known rows so the
   // continuation reads the same history the interrupted run would have.
@@ -296,7 +299,7 @@ export function extendDiagram(params: ExtendDiagramParams): Uint8Array[] {
     window.push(next)
     window.shift()
     rowsData[y] = next
-    paintRow(ctx, next, width, y)
+    paintRow(ctx, next, width, y, palette)
   }
   return rowsData
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { LegendItem } from '../../types/ca'
+import { stateChar } from '../../utils/caMath'
 
 const props = defineProps<{
   colors: string[]
@@ -32,7 +33,7 @@ const visibleItems = computed(() => (collapsed.value && showToggle.value ? props
 
 <template>
   <div class="ca-key">
-    <span v-for="s in stateCount" :key="s"><span class="ca-dot" :style="{ background: colors[s - 1] }"></span>{{ s - 1 }}</span>
+    <span v-for="s in stateCount" :key="s"><span class="ca-dot" :style="{ background: colors[s - 1] }"></span>{{ stateChar(s - 1) }}</span>
     <span class="ca-key-text">{{ keyText }}</span>
   </div>
 
