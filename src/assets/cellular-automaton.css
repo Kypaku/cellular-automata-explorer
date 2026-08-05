@@ -137,6 +137,44 @@ html.dark .ca-wrap {
   flex-wrap: wrap;
   border-radius: 12px;
 }
+/* JSON rule editor: accordion sitting next to the state (colour) selector. */
+.ca-json-rule {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.ca-json-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.ca-json-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 0.5px solid var(--ca-border);
+  border-radius: 12px;
+  background: var(--ca-panel);
+}
+.ca-json-textarea {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+.ca-json-body button:not(.ca-link-btn) {
+  padding: 7px 13px;
+  font-size: 13px;
+  border: 0.5px solid var(--ca-border);
+  border-radius: 10px;
+  background: var(--ca-chip-bg);
+  color: var(--ca-chip-text);
+}
 .ca-actions {
   display: flex;
   flex-wrap: wrap;

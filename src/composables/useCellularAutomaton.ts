@@ -273,6 +273,24 @@ export function useCellularAutomaton() {
     refresh()
   }
 
+  /**
+   * Applies a local rule string produced by the JSON rule editor. Behaves like
+   * a manual edit of the rule input: the rule becomes hand-made ("dirty") and
+   * the explorer switches to "by templates" mode.
+   */
+  function applyRuleJson(rule: string): void {
+    const clean = sanitizeStateString(rule, activeConfig().localDigits, stateCount.value)
+    ruleInputValue.value = clean
+    localRules[stateCount.value] = clean
+    localRuleDirty[stateCount.value] = true
+    updateRuleStatus()
+    if (mode.value !== 'local') {
+      setMode('local')
+      return
+    }
+    refresh()
+  }
+
   function onSeedInput(event: Event): void {
     seedInputValue.value = inputValue(event)
     storeCurrentSeed()
@@ -560,6 +578,7 @@ export function useCellularAutomaton() {
     onNoiseNumberInput,
     onNoisePreset,
     onRuleInput,
+    applyRuleJson,
     onSeedInput,
     onRandomRule,
     onEmissionInput,
