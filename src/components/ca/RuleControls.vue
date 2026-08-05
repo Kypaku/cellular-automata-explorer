@@ -16,6 +16,8 @@ const props = defineProps<{
   ruleLabelText: string
   ruleStatusText: string
   ruleInputValue: string
+  /** Templates whose output is drawn at random: neighborhood index → the state digits to pick from. */
+  stochasticOptions: Record<string, string> | null
   emissionLabelText: string
   emissionStatusText: string
   emissionInputValue: string
@@ -121,6 +123,7 @@ const emit = defineEmits([
         :neighborhood="neighborhood"
         :depth="depth"
         :local-rule="ruleInputValue"
+        :stochastic-options="stochasticOptions"
         @apply="emit('apply-rule-json', $event)"
       />
 

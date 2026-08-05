@@ -8,10 +8,12 @@ const props = defineProps<{
   neighborhood: number
   depth: number
   localRule: string
+  /** Templates whose output is drawn at random: neighborhood index → the state digits to pick from. */
+  stochasticOptions: Record<string, string> | null
 }>()
 
 const emit = defineEmits<{
-  apply: [rule: string]
+  apply: [payload: { rule: string; options: Record<string, string> }]
 }>()
 
 const open = ref(false)
@@ -30,7 +32,13 @@ function plural(count: number): string {
 }
 
 function loadFromRule(): void {
-  const built = buildRuleJson(props.localRule, props.stateCount, props.neighborhood, props.depth)
+  const built = buildRuleJson(
+    props.localRule,
+    props.stateCount,
+    props.neighborhood,
+    props.depth,
+    props.stochasticOptions
+  )
   text.value = built.text
   error.value = ''
   dirty.value = false
@@ -61,12 +69,12 @@ function onApply(): void {
   info.value = `Applied ${result.entries} pattern${plural(result.entries)} covering ${result.covered} of ${config.value.localDigits} templates.`
   // Keep the text as written (wildcards included) instead of the expanded form.
   dirty.value = true
-  emit('apply', result.rule)
+  emit('apply', { rule: result.rule, options: result.options })
 }
 
 // While the editor is open and untouched, follow the rule shown elsewhere.
 watch(
-  () => [props.localRule, props.stateCount, props.neighborhood, props.depth],
+  () => [props.localRule, props.stateCount, props.neighborhood, props.depth, props.stochasticOptions],
   () => {
     if (open.value && supported.value && !dirty.value) {
       loadFromRule()
@@ -88,8 +96,9 @@ watch(
           One entry per template: the key lists the {{ config.taps }} cells the rule reads (leftmost cell of the
           oldest row first), the value is the resulting state. "{{ RULE_JSON_ANY }}" matches any state<template
             v-if="config.depth > 1"
-          >, and "/" optionally separates the {{ config.depth }} rows</template>. Every template that is not
-          listed produces 0.
+          >, and "/" optionally separates the {{ config.depth }} rows</template>. A list such as [1, 0] picks
+          one of the listed states at random every time the template fires (repeat a state to make it more
+          likely). Every template that is not listed produces 0.
         </div>
         <textarea
           class="ca-input ca-json-textarea"

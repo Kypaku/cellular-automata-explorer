@@ -9,6 +9,7 @@ import {
   renderDiagramEnergy,
 } from '../utils/caRender'
 import type { RenderContext } from '../utils/caLargeRender'
+import type { StochasticTable } from '../utils/caRuleJson'
 import type { CaConfig, CollisionMode, InitMode, RuleMode } from '../types/ca'
 
 /** Reads the current value out of an input `Event` target. */
@@ -31,6 +32,8 @@ export interface CaCanvasRenderDeps {
   initialEnergy: Ref<number>
   activeConfig: () => CaConfig
   currentLocalRule: () => string
+  /** Local mode: neighborhood index → states to draw from at random (null when the rule is fully deterministic). */
+  currentStochastic: () => StochasticTable | null
   currentEmissionTable: () => number[]
   currentCollisionFixed: () => number
   currentRuleLabel: () => string
@@ -58,6 +61,7 @@ export function useCaCanvasRender(deps: CaCanvasRenderDeps) {
     initialEnergy,
     activeConfig,
     currentLocalRule,
+    currentStochastic,
     currentEmissionTable,
     currentCollisionFixed,
     currentRuleLabel,
@@ -150,6 +154,7 @@ export function useCaCanvasRender(deps: CaCanvasRenderDeps) {
       collisionMode: collisionModeValue,
       collisionFixed: collisionFixedValue,
       noiseP: noise.value / 100,
+      stochastic: mode.value === 'local' ? currentStochastic() : null,
       initialRow: buildInitialRowForState(),
       priorRows: buildPriorRowsForState(W.value),
     })
@@ -237,6 +242,7 @@ export function useCaCanvasRender(deps: CaCanvasRenderDeps) {
       collisionMode: collisionModeValue,
       collisionFixed: collisionFixedValue,
       noiseP: noise.value / 100,
+      stochastic: mode.value === 'local' ? currentStochastic() : null,
       previousRows: grid.value,
       extraRows: addRows,
     })
@@ -264,6 +270,7 @@ export function useCaCanvasRender(deps: CaCanvasRenderDeps) {
       collisionMode: collisionMode.value,
       collisionFixed: currentCollisionFixed(),
       noiseP: noise.value / 100,
+      stochastic: mode.value === 'local' ? currentStochastic() : null,
       ruleLabel: currentRuleLabel(),
       makeInitialRow: (width: number) => buildInitialRow(width, config, stateCount.value, init.value, seedInputValue.value),
       makePriorRows: (width: number) => buildPriorRowsForState(width),

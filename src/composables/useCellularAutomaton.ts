@@ -22,7 +22,8 @@ import {
   DEFAULT_COLLISION_MODE,
   DEFAULT_COLLISION_FIXED,
 } from '../utils/caMath'
-import type { CaConfig, InitMode, RuleMode, RuleSnapshot } from '../types/ca'
+import type { CaConfig, InitMode, RuleMode, RuleSnapshot, StochasticRule } from '../types/ca'
+import { stochasticTable, type StochasticTable } from '../utils/caRuleJson'
 import { useCaDescendantsRule } from './useCaDescendantsRule'
 import { useCaCanvasRender } from './useCaCanvasRender'
 import { useCaStatusText } from './useCaStatusText'
@@ -56,6 +57,15 @@ export function useCellularAutomaton() {
   const ruleInputValue = ref('')
   const seedInputValue = ref('')
   const codeValue = ref(1155)
+
+  /**
+   * Templates whose output is drawn at random from several states (written as
+   * `"120": [1, 0]` in the JSON rule editor). They stay tied to the exact local
+   * rule string they were applied to, so editing the rule any other way (legend
+   * clicks, the rule input, a new code, a different state count) silently drops
+   * them instead of leaving invisible randomness behind.
+   */
+  const stochasticRule = ref<StochasticRule | null>(null)
 
   const sliderLabelText = ref('')
   const codeMax = ref(2186)
@@ -137,6 +147,19 @@ export function useCellularAutomaton() {
     return canMaterializeLocal(config) ? padRight(clean, config.localDigits) : clean
   }
 
+  /** The random-choice options, but only while they still belong to the current local rule. */
+  const currentStochasticOptions = computed<Record<string, string> | null>(() => {
+    const stochastic = stochasticRule.value
+    if (!stochastic || mode.value !== 'local') {
+      return null
+    }
+    return stochastic.rule === currentLocalRule() ? stochastic.options : null
+  })
+
+  function currentStochastic(): StochasticTable | null {
+    return stochasticTable(currentStochasticOptions.value)
+  }
+
   /** Filesystem-safe label describing the current rule, used to name exported files (e.g. large-image PNG downloads). */
   function currentRuleLabel(): string {
     const states = stateCount.value
@@ -199,7 +222,7 @@ export function useCellularAutomaton() {
   const canvasRender = useCaCanvasRender({
     W, H, mode, stateCount, noise, init, seedInputValue, depth, totalisticCodes,
     collisionMode, energyEnabled, initialEnergy,
-    activeConfig, currentLocalRule, currentEmissionTable, currentCollisionFixed, currentRuleLabel,
+    activeConfig, currentLocalRule, currentStochastic, currentEmissionTable, currentCollisionFixed, currentRuleLabel,
   })
   const { canvasRef, extraRows, grid, run, continueSimulation, onExtraRowsInput, getRenderContext } = canvasRender
 
@@ -274,15 +297,17 @@ export function useCellularAutomaton() {
   }
 
   /**
-   * Applies a local rule string produced by the JSON rule editor. Behaves like
-   * a manual edit of the rule input: the rule becomes hand-made ("dirty") and
-   * the explorer switches to "by templates" mode.
+   * Applies a local rule string produced by the JSON rule editor, together with
+   * the templates that draw their output at random. Behaves like a manual edit
+   * of the rule input: the rule becomes hand-made ("dirty") and the explorer
+   * switches to "by templates" mode.
    */
-  function applyRuleJson(rule: string): void {
+  function applyRuleJson(rule: string, options: Record<string, string> | null = null): void {
     const clean = sanitizeStateString(rule, activeConfig().localDigits, stateCount.value)
     ruleInputValue.value = clean
     localRules[stateCount.value] = clean
     localRuleDirty[stateCount.value] = true
+    stochasticRule.value = options && Object.keys(options).length > 0 ? { rule: currentLocalRule(), options } : null
     updateRuleStatus()
     if (mode.value !== 'local') {
       setMode('local')
@@ -477,6 +502,7 @@ export function useCellularAutomaton() {
       height: H.value,
       width: W.value,
       noise: noise.value,
+      stochastic: currentStochasticOptions.value ? { ...(stochasticRule.value as StochasticRule) } : undefined,
     }
   }
 
@@ -514,6 +540,7 @@ export function useCellularAutomaton() {
     emissionInputValue.value = emissionRules[nextStateCount]
     mode.value =
       snapshot.mode === 'local' || snapshot.mode === 'descendants' ? snapshot.mode : 'totalistic'
+    stochasticRule.value = snapshot.stochastic && snapshot.stochastic.options ? snapshot.stochastic : null
     refresh()
   }
 
@@ -557,6 +584,7 @@ export function useCellularAutomaton() {
     legendItems,
     keyText,
     grid,
+    stochasticOptions: currentStochasticOptions,
     // actions
     run,
     refresh,

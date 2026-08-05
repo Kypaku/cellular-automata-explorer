@@ -2,6 +2,7 @@
 // Kept framework-agnostic so useCellularAutomaton only wires reactive state to it.
 import { CA_PIXEL_SIZE, statePalette } from '../constants/ca'
 import { sanitizeStateString, stateDigitAt, stateDigitFromCharCode } from './caMath'
+import type { StochasticTable } from './caRuleJson'
 import type { CaConfig, CollisionMode, InitMode, RuleMode } from '../types/ca'
 
 /** Builds the first row from the chosen init mode (single / random / custom seed). */
@@ -53,6 +54,8 @@ export interface RenderDiagramParams {
   collisionFixed?: number
   /** Fraction 0..1 of cells forced to a rule-defying value each step. */
   noiseP: number
+  /** Local mode: neighborhood index → states to draw from at random, else null. */
+  stochastic?: StochasticTable | null
   initialRow: Uint8Array
   /**
    * The `depth - 1` rows that sit ABOVE the initial row (the "prehistory"),
@@ -80,7 +83,8 @@ export function evolveStep(
   noiseP: number,
   emission?: number[] | null,
   collisionMode?: CollisionMode,
-  collisionFixed?: number
+  collisionFixed?: number,
+  stochastic?: StochasticTable | null
 ): Uint8Array {
   const nextRow = new Uint8Array(width)
   const states = config.states
@@ -116,6 +120,11 @@ export function evolveStep(
       // Unfilled / out-of-range neighborhoods (e.g. an un-materialized huge rule) are state 0.
       const digit = stateDigitFromCharCode(ch)
       value = digit >= 0 ? digit : 0
+      // Templates declared with a list of states draw a fresh one every time.
+      const picks = stochastic ? stochastic.get(index) : undefined
+      if (picks) {
+        value = stateDigitAt(picks, Math.floor(Math.random() * picks.length))
+      }
     } else {
       // Descendants: each child gathers up to 3 emitted contributions from the
       // current row. Background (state 0) emits nothing; a live parent's triple
@@ -219,7 +228,7 @@ function paintRow(ctx: CanvasRenderingContext2D, row: Uint8Array, width: number,
  * stroked on top.
  */
 export function renderDiagram(params: RenderDiagramParams): Uint8Array[] {
-  const { ctx, width, height, config, mode, sums, explicitRule, emission, collisionMode, collisionFixed, noiseP } =
+  const { ctx, width, height, config, mode, sums, explicitRule, emission, collisionMode, collisionFixed, noiseP, stochastic } =
     params
 
   const palette = statePalette(config.states)
@@ -240,7 +249,7 @@ export function renderDiagram(params: RenderDiagramParams): Uint8Array[] {
     const row = window[window.length - 1]
     rowsData[y] = row.slice()
     paintRow(ctx, row, width, y, palette)
-    const next = evolveStep(window, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed)
+    const next = evolveStep(window, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed, stochastic)
     window.push(next)
     window.shift()
   }
@@ -258,6 +267,8 @@ export interface ExtendDiagramParams {
   collisionMode?: CollisionMode
   collisionFixed?: number
   noiseP: number
+  /** Local mode: neighborhood index → states to draw from at random, else null. */
+  stochastic?: StochasticTable | null
   /** Rows already rendered/kept from a previous run() or extendDiagram() call. */
   previousRows: Uint8Array[]
   /** How many additional generations to simulate past `previousRows`. */
@@ -273,7 +284,7 @@ export interface ExtendDiagramParams {
  * so nothing is re-evolved. Returns the full row set (previous + new).
  */
 export function extendDiagram(params: ExtendDiagramParams): Uint8Array[] {
-  const { ctx, width, config, mode, sums, explicitRule, emission, collisionMode, collisionFixed, noiseP, previousRows, extraRows } =
+  const { ctx, width, config, mode, sums, explicitRule, emission, collisionMode, collisionFixed, noiseP, stochastic, previousRows, extraRows } =
     params
   const totalHeight = previousRows.length + extraRows
 
@@ -295,7 +306,7 @@ export function extendDiagram(params: ExtendDiagramParams): Uint8Array[] {
   }
   for (let i = 0; i < extraRows; i++) {
     const y = previousRows.length + i
-    const next = evolveStep(window, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed)
+    const next = evolveStep(window, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed, stochastic)
     window.push(next)
     window.shift()
     rowsData[y] = next

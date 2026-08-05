@@ -5,7 +5,8 @@
 //   {
 //     "111": 0,
 //     "#11": 1,        // '#' matches any state
-//     "123/222": 2     // '/' separates the rows of a multi-row rule
+//     "123/222": 2,    // '/' separates the rows of a multi-row rule
+//     "120": [1, 0]    // a list picks one of the states at random, each time
 //   }
 //
 // The key lists the cells the rule reads, most significant (leftmost cell of
@@ -23,6 +24,28 @@ export const RULE_JSON_ROW_SEPARATOR = '/'
 /** Largest number of entries {@link buildRuleJson} writes out before truncating. */
 export const RULE_JSON_MAX_ENTRIES = 1024
 
+/**
+ * Runtime lookup used by the evolution loops: neighborhood index → the state
+ * digits to pick from at random. Absent indices are deterministic.
+ */
+export type StochasticTable = Map<number, string>
+
+/** Turns the stored `{ index: "digits" }` options into a lookup map (null when there is nothing random). */
+export function stochasticTable(options: Record<string, string> | null | undefined): StochasticTable | null {
+  if (!options) {
+    return null
+  }
+  const table: StochasticTable = new Map()
+  for (const key of Object.keys(options)) {
+    const index = Number(key)
+    const picks = options[key]
+    if (Number.isFinite(index) && typeof picks === 'string' && picks.length > 1) {
+      table.set(index, picks)
+    }
+  }
+  return table.size > 0 ? table : null
+}
+
 export interface RuleJsonBuildResult {
   /** The generated JSON text (empty when the rule table is too large to expand). */
   text: string
@@ -37,6 +60,13 @@ export interface RuleJsonBuildResult {
 export interface RuleJsonParseResult {
   /** The resulting local rule string, or null when parsing failed. */
   rule: string | null
+  /**
+   * Neighborhood index (as a string key) → the state digits a list value picks
+   * from at random, e.g. `{ "6": "10" }`. Only holds entries with 2+ options;
+   * `rule` carries the first option of each, so consumers that ignore
+   * randomness still get a valid deterministic rule.
+   */
+  options: Record<string, string>
   /** Human readable reason why parsing failed, or null on success. */
   error: string | null
   /** How many entries the text contained. */
@@ -104,8 +134,21 @@ function stripComments(text: string): string {
 
 // Deliberately tolerant: missing commas (as in the shorthand notation users
 // write by hand) still parse, because every "key": value pair is matched on
-// its own instead of running the text through JSON.parse.
-const PAIR_PATTERN = /(["'])([^"'\n]*)\1\s*:\s*([^\s,}\]]+)/g
+// its own instead of running the text through JSON.parse. A value is either a
+// bare state digit or a bracketed list of them.
+const PAIR_PATTERN = /(["'])([^"'\n]*)\1\s*:\s*(\[[^\]]*\]|[^\s,}\]]+)/g
+
+/** Splits a raw JSON value into the state digits it offers (a list = pick one at random). */
+function valueOptions(rawValue: string): string[] {
+  if (rawValue.startsWith('[')) {
+    return rawValue
+      .slice(1, rawValue.endsWith(']') ? -1 : undefined)
+      .split(',')
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0)
+  }
+  return [rawValue]
+}
 
 /** Serializes the non-zero entries of a local rule into the JSON rule format. */
 export function buildRuleJson(
@@ -113,6 +156,7 @@ export function buildRuleJson(
   states: number,
   neighborhood: number = 3,
   depth: number = 1,
+  options: Record<string, string> | null = null,
   maxEntries: number = RULE_JSON_MAX_ENTRIES
 ): RuleJsonBuildResult {
   const config = getConfig(states, neighborhood, depth)
@@ -124,12 +168,14 @@ export function buildRuleJson(
   let total = 0
   for (let index = 0; index < config.localDigits; index++) {
     const digit = stateDigitFromCharCode(clean.charCodeAt(index))
-    if (digit <= 0) {
+    const choices = options ? options[String(index)] : undefined
+    if (digit <= 0 && !choices) {
       continue
     }
     total++
     if (lines.length < maxEntries) {
-      lines.push(`  "${formatRulePattern(index, config)}": ${stateChar(digit)}`)
+      const value = choices ? `[${choices.split('').join(', ')}]` : stateChar(digit)
+      lines.push(`  "${formatRulePattern(index, config)}": ${value}`)
     }
   }
   return {
@@ -142,8 +188,10 @@ export function buildRuleJson(
 
 /**
  * Parses the JSON rule format into a local rule string. Patterns may use '#'
- * for "any state" and '/' to separate the rows of a multi-row rule; later
- * entries win over earlier ones and every unlisted pattern produces state 0.
+ * for "any state" and '/' to separate the rows of a multi-row rule; a list
+ * value (`[1, 0]`) makes the template pick one of those states at random every
+ * time it fires. Later entries win over earlier ones and every unlisted
+ * pattern produces state 0.
  */
 export function parseRuleJson(
   text: string,
@@ -153,11 +201,12 @@ export function parseRuleJson(
 ): RuleJsonParseResult {
   const config = getConfig(states, neighborhood, depth)
   if (!canMaterializeLocal(config)) {
-    return { rule: null, error: 'This rule table is too large to be edited as JSON.', entries: 0, covered: 0 }
+    return { rule: null, options: {}, error: 'This rule table is too large to be edited as JSON.', entries: 0, covered: 0 }
   }
 
   const body = stripComments(String(text || ''))
   const digits = new Uint8Array(config.localDigits)
+  const options: Record<string, string> = {}
   let entries = 0
   let covered = 0
 
@@ -171,17 +220,33 @@ export function parseRuleJson(
     if (key.length !== config.taps) {
       return {
         rule: null,
+        options: {},
         error: `Pattern "${rawKey}" has ${key.length} cells, expected ${config.taps} (${config.neighborhood} cells x ${config.depth} row(s)).`,
         entries,
         covered,
       }
     }
 
-    const value = stateDigitFromCharCode(rawValue.charCodeAt(0))
-    if (rawValue.length !== 1 || value < 0 || value >= config.states) {
+    // A bare digit is deterministic; a list is drawn from at random each time.
+    let picks = ''
+    for (const choice of valueOptions(rawValue)) {
+      const value = stateDigitFromCharCode(choice.charCodeAt(0))
+      if (choice.length !== 1 || value < 0 || value >= config.states) {
+        return {
+          rule: null,
+          options: {},
+          error: `Value "${choice}" of pattern "${rawKey}" is not a state between 0 and ${config.maxDigit}.`,
+          entries,
+          covered,
+        }
+      }
+      picks += stateChar(value)
+    }
+    if (!picks) {
       return {
         rule: null,
-        error: `Value "${rawValue}" of pattern "${rawKey}" is not a state between 0 and ${config.maxDigit}.`,
+        options: {},
+        error: `Pattern "${rawKey}" lists no states.`,
         entries,
         covered,
       }
@@ -199,6 +264,7 @@ export function parseRuleJson(
       if (digit < 0 || digit >= config.states) {
         return {
           rule: null,
+          options: {},
           error: `Pattern "${rawKey}" contains "${key[cell]}", expected a state between 0 and ${config.maxDigit} or "${RULE_JSON_ANY}".`,
           entries,
           covered,
@@ -207,6 +273,7 @@ export function parseRuleJson(
       base += digit * weight
     }
 
+    const first = stateDigitFromCharCode(picks.charCodeAt(0))
     const combinations = Math.pow(config.states, wildcardWeights.length)
     for (let combo = 0; combo < combinations; combo++) {
       let index = base
@@ -215,7 +282,14 @@ export function parseRuleJson(
         index += (remaining % config.states) * wildcardWeights[w]
         remaining = Math.floor(remaining / config.states)
       }
-      digits[index] = value
+      // The rule string keeps the first option, so every consumer that ignores
+      // the random choices (analysis, tags, PNG export) still sees a valid rule.
+      digits[index] = first
+      if (picks.length > 1) {
+        options[String(index)] = picks
+      } else {
+        delete options[String(index)]
+      }
       covered++
     }
     entries++
@@ -224,6 +298,7 @@ export function parseRuleJson(
   if (entries === 0) {
     return {
       rule: null,
+      options: {},
       error: 'No patterns found. Expected entries such as "110": 1 between { and }.',
       entries: 0,
       covered: 0,
@@ -234,5 +309,5 @@ export function parseRuleJson(
   for (let index = 0; index < config.localDigits; index++) {
     rule += stateChar(digits[index])
   }
-  return { rule, error: null, entries, covered }
+  return { rule, options, error: null, entries, covered }
 }

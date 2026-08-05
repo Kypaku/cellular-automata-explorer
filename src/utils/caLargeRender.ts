@@ -16,6 +16,7 @@
 // down-scaling (N cells per pixel), the latter being what large fields need.
 import { statePalette } from '../constants/ca'
 import { evolveStep } from './caRender'
+import type { StochasticTable } from './caRuleJson'
 import type { CaConfig, CollisionMode, RuleMode } from '../types/ca'
 
 // Above roughly this per-side size a browser can no longer *display* the
@@ -37,6 +38,8 @@ export interface RenderContext {
   collisionMode?: CollisionMode
   collisionFixed?: number
   noiseP: number
+  /** Local mode: neighborhood index → states to draw from at random, else null. */
+  stochastic?: StochasticTable | null
   /** Filesystem-safe label describing the current rule (e.g. "3s-totalistic-12345"), used to name exported files. */
   ruleLabel: string
   /** Builds the initial row for the requested width using the current init/seed. */
@@ -58,6 +61,8 @@ export interface PngDiagramParams {
   collisionMode?: CollisionMode
   collisionFixed?: number
   noiseP: number
+  /** Local mode: neighborhood index → states to draw from at random, else null. */
+  stochastic?: StochasticTable | null
   initialRow: Uint8Array
   /** The `depth - 1` prehistory rows above the initial row (multi-row rules only), oldest → newest. */
   priorRows?: Uint8Array[]
@@ -150,7 +155,7 @@ export async function renderDiagramToPngBlob(params: PngDiagramParams): Promise<
   if (typeof CompressionStream === 'undefined') {
     throw new Error('this browser lacks CompressionStream (needed for direct PNG export)')
   }
-  const { width, height, config, mode, sums, explicitRule, emission, collisionMode, collisionFixed, noiseP, initialRow, cellSize, downscale } =
+  const { width, height, config, mode, sums, explicitRule, emission, collisionMode, collisionFixed, noiseP, stochastic, initialRow, cellSize, downscale } =
     params
   const factor = Math.max(1, Math.floor(cellSize))
   const { outWidth, outHeight } = outputSize(width, height, factor, downscale)
@@ -208,7 +213,7 @@ export async function renderDiagramToPngBlob(params: PngDiagramParams): Promise<
         await writer.write(scan.slice())
       }
     }
-    const next = evolveStep(window, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed)
+    const next = evolveStep(window, width, config, mode, sums, explicitRule, noiseP, emission, collisionMode, collisionFixed, stochastic)
     window.push(next)
     window.shift()
   }

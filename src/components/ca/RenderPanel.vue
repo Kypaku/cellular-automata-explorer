@@ -92,6 +92,7 @@ async function generate(): Promise<void> {
       collisionMode: context.collisionMode,
       collisionFixed: context.collisionFixed,
       noiseP: context.noiseP,
+      stochastic: context.stochastic,
       initialRow: context.makeInitialRow(w),
       priorRows: context.makePriorRows?.(w),
       cellSize: cs,

@@ -107,6 +107,21 @@ export interface RuleSnapshot {
   height: number
   width?: number
   noise?: number
+  /** Local mode: templates whose output is drawn at random from several states. */
+  stochastic?: StochasticRule
+}
+
+/**
+ * Local-rule templates whose output is *not* a single state but one drawn
+ * uniformly at random from a list, e.g. `"120": [1, 0]`. The options only
+ * apply while `rule` still matches the current local rule string, so any other
+ * edit of the rule silently drops them.
+ */
+export interface StochasticRule {
+  /** The local rule string these options belong to. */
+  rule: string
+  /** Neighborhood index (as a string key) → the state digits to pick from, e.g. `{ "6": "10" }`. */
+  options: Record<string, string>
 }
 
 /** One coloured legend entry rendered under the canvas. */
