@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { MAX_STATE_COUNT, SAFE_STATE_COUNT } from '../../utils/caMath'
 
 const props = defineProps<{
@@ -10,6 +10,7 @@ const props = defineProps<{
   codeValue: number
   codeMax: number
   showCodeControl: boolean
+  canConvertToTemplate: boolean
   sliderLabelText: string
   ruleLabelText: string
   ruleStatusText: string
@@ -27,6 +28,21 @@ const ruleMaxLength = computed(() => Math.pow(props.stateCount, props.neighborho
 const emissionMaxLength = computed(() => 3 * (props.stateCount - 1))
 const maxFixed = computed(() => props.stateCount - 1)
 const experimentalStates = computed(() => props.stateCount > SAFE_STATE_COUNT)
+
+// The custom state-count input is only needed rarely (beyond the 2-5
+// preset buttons), so it stays hidden behind a toggle by default - it
+// auto-opens when the current rule already uses a custom count so it's
+// never hidden while active.
+const customStatesOpen = ref(props.stateCount > SAFE_STATE_COUNT)
+
+watch(
+  () => props.stateCount,
+  (value) => {
+    if (value > SAFE_STATE_COUNT) {
+      customStatesOpen.value = true
+    }
+  },
+)
 
 /**
  * Applies the free-form state count input. Fired on `change` (not `input`) so
@@ -50,6 +66,7 @@ const emit = defineEmits([
   'code-number-input',
   'code-number-change',
   'rule-input',
+  'convert-to-template',
   'emission-input',
   'set-collision-mode',
   'collision-fixed-input',
@@ -73,7 +90,11 @@ const emit = defineEmits([
           <button type="button" :class="{ on: stateCount === 4 }" @click="emit('set-state-count', 4)">4 colors</button>
           <button type="button" :class="{ on: stateCount === 5 }" @click="emit('set-state-count', 5)">5 colors</button>
         </span>
+        <button type="button" class="ca-link-btn" @click="customStatesOpen = !customStatesOpen">
+          {{ customStatesOpen ? 'hide custom count' : 'custom count…' }}
+        </button>
         <input
+          v-if="customStatesOpen"
           class="ca-number ca-number--sm"
           type="number"
           min="2"
@@ -85,7 +106,7 @@ const emit = defineEmits([
         />
       </div>
 
-      <div class="ca-field" v-if="experimentalStates">
+      <div class="ca-field" v-if="experimentalStates && customStatesOpen">
         <span class="ca-meter">
           {{ stateCount }} states is experimental: rule spaces explode, colours past 5 are generated
           automatically and states 10+ are written as letters (a, b, c …). Use at your own risk.
@@ -151,6 +172,26 @@ const emit = defineEmits([
             @change="emit('code-number-change')"
           />
           <span class="ca-out">{{ codeValue }}</span>
+        </div>
+      </div>
+
+      <div class="ca-control" v-if="mode === 'totalistic'">
+        <button
+          type="button"
+          :disabled="!canConvertToTemplate"
+          title="expand this totalistic rule into an equivalent per-neighborhood template rule and switch to 'by templates' mode"
+          @click="emit('convert-to-template')"
+        >
+          convert to templates
+        </button>
+        <div class="ca-meter">
+          <template v-if="canConvertToTemplate">
+            Rewrites the current totalistic rule as an equivalent template rule ({{ ruleMaxLength }} neighborhoods),
+            so each neighborhood can be edited on its own. Replaces the template rule stored for {{ stateCount }} states.
+          </template>
+          <template v-else>
+            The template table for this combination of states, neighborhood and previous rows is too large to expand.
+          </template>
         </div>
       </div>
 

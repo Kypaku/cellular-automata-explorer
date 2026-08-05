@@ -31,6 +31,7 @@ export interface Chaos2AnalysisStartParams {
   cutTop: number
   blockSize: number
   maxUnique: number
+  ignoreStatic?: boolean
   sourceMode?: AnalysisSourceMode
   sampleCount?: number
   rules?: AnalysisRuleInput[]
@@ -70,7 +71,7 @@ export function useRuleChaos2Analysis() {
     if (running.value) {
       return
     }
-    const { stateCount, mode, width, height, init, cutTop, blockSize, maxUnique, apply } = params
+    const { stateCount, mode, width, height, init, cutTop, blockSize, maxUnique, ignoreStatic, apply } = params
     const from = Math.max(0, Math.floor(params.from))
     const to = Math.max(from, Math.floor(params.to))
     const ruleItems = params.sourceMode === 'tags' ? params.rules || [] : null
@@ -135,6 +136,7 @@ export function useRuleChaos2Analysis() {
           cutTop,
           blockSize,
           maxUnique,
+          ignoreStatic,
         })
         const noChaos = !isChaotic
         if (noChaos) {

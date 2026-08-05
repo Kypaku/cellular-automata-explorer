@@ -105,6 +105,15 @@ export function useCellularAutomaton() {
       (mode.value === 'local' && !localCodeExceedsSafeInteger(stateCount.value, neighborhood.value, depth.value))
   )
 
+  /**
+   * A totalistic rule can always be rewritten as an equivalent "by templates"
+   * (local) rule — as long as the template table is small enough to be
+   * materialized (see {@link canMaterializeLocal}).
+   */
+  const canConvertToTemplate = computed(
+    () => mode.value === 'totalistic' && canMaterializeLocal(getConfig(stateCount.value, neighborhood.value, depth.value))
+  )
+
   const seedPlaceholder = computed(() => {
     if (stateCount.value === 2) {
       return 'e.g. 00011100101'
@@ -276,21 +285,23 @@ export function useCellularAutomaton() {
    * Clicking a legend square steps that cell's output value to the next
    * state (wrapping back to 0): the neighbor-sum output in totalistic mode,
    * or the local rule digit at that neighborhood index in local mode.
+   * Right-clicking steps to the previous state instead (direction -1).
    */
-  function onLegendCellClick(index: number): void {
+  function onLegendCellClick(index: number, direction: 1 | -1 = 1): void {
     if (mode.value === 'totalistic') {
       totalisticCodes[stateCount.value] = cycleTotalisticDigit(
         totalisticCodes[stateCount.value],
         stateCount.value,
         index,
         neighborhood.value,
-        depth.value
+        depth.value,
+        direction
       )
       syncLocalRule(false)
     } else if (mode.value === 'descendants') {
-      onLegendEmissionCellClick(index)
+      onLegendEmissionCellClick(index, direction)
     } else {
-      const nextRule = cycleLocalRuleDigit(currentLocalRule(), stateCount.value, index, neighborhood.value, depth.value)
+      const nextRule = cycleLocalRuleDigit(currentLocalRule(), stateCount.value, index, neighborhood.value, depth.value, direction)
       ruleInputValue.value = nextRule
       localRules[stateCount.value] = nextRule
       localRuleDirty[stateCount.value] = true
@@ -377,6 +388,21 @@ export function useCellularAutomaton() {
     }
     syncLocalRule(false)
     refresh()
+  }
+
+  /**
+   * Expands the current totalistic rule into its equivalent per-neighborhood
+   * template (local) rule and switches to "by templates" mode, so every
+   * neighborhood can be edited individually. Overwrites the local rule stored
+   * for the current state count, including hand-made edits.
+   */
+  function convertTotalisticToTemplate(): void {
+    if (!canConvertToTemplate.value) {
+      return
+    }
+    syncLocalRule(true)
+    localRuleDirty[stateCount.value] = true
+    setMode('local')
   }
 
   function setMode(nextMode: RuleMode): void {
@@ -491,6 +517,7 @@ export function useCellularAutomaton() {
     codeValue,
     codeMax,
     showCodeControl,
+    canConvertToTemplate,
     sliderLabelText,
     ruleInputValue,
     ruleLabelText,
@@ -522,6 +549,7 @@ export function useCellularAutomaton() {
     setStateCount,
     setNeighborhood,
     setDepth,
+    convertTotalisticToTemplate,
     onCodeSliderInput,
     onCodeNumberInput,
     onHeightSliderInput,

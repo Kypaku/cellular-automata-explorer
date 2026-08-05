@@ -224,31 +224,33 @@ export function localRuleToCode(rule: string, states: number, neighborhood: numb
 
 /**
  * Returns a copy of a local rule string with the digit at `index` advanced
- * to the next state (wrapping from the highest state back to 0). Used to
- * let the user click a legend cell and step its output value.
+ * to the next state (wrapping from the highest state back to 0), or to the
+ * previous state when `direction` is -1. Used to let the user click (or
+ * right-click) a legend cell and step its output value.
  */
-export function cycleLocalRuleDigit(rule: string, states: number, index: number, neighborhood: number = 3, depth: number = 1): string {
+export function cycleLocalRuleDigit(rule: string, states: number, index: number, neighborhood: number = 3, depth: number = 1, direction: 1 | -1 = 1): string {
   const config = getConfig(states, neighborhood, depth)
   const clean = padRight(sanitizeStateString(rule, config.localDigits, states), config.localDigits)
   if (index < 0 || index >= clean.length) {
     return clean
   }
   const current = stateDigitAt(clean, index)
-  const next = (current + 1) % states
+  const next = (current + direction + states) % states
   return clean.slice(0, index) + stateChar(next) + clean.slice(index + 1)
 }
 
 /**
  * Returns a new totalistic rule code with the output for neighbor-sum
  * `sumIndex` advanced to the next state (wrapping from the highest state
- * back to 0). Mirrors `cycleLocalRuleDigit` for totalistic mode.
+ * back to 0), or to the previous state when `direction` is -1. Mirrors
+ * `cycleLocalRuleDigit` for totalistic mode.
  */
-export function cycleTotalisticDigit(code: number, states: number, sumIndex: number, neighborhood: number = 3, depth: number = 1): number {
+export function cycleTotalisticDigit(code: number, states: number, sumIndex: number, neighborhood: number = 3, depth: number = 1, direction: 1 | -1 = 1): number {
   const table = totalisticTable(code, states, neighborhood, depth)
   if (sumIndex < 0 || sumIndex >= table.length) {
     return code
   }
-  table[sumIndex] = (table[sumIndex] + 1) % states
+  table[sumIndex] = (table[sumIndex] + direction + states) % states
   let newCode = 0
   for (let sum = table.length - 1; sum >= 0; sum--) {
     newCode = newCode * states + table[sum]
@@ -410,13 +412,17 @@ export function emissionTable(rule: string, states: number): number[] {
   return table
 }
 
-/** Advances the emission digit at `index` to the next state (wrapping). */
-export function cycleEmissionDigit(rule: string, states: number, index: number): string {
+/**
+ * Advances the emission digit at `index` to the next state (wrapping), or to
+ * the previous state when `direction` is -1.
+ */
+export function cycleEmissionDigit(rule: string, states: number, index: number, direction: 1 | -1 = 1): string {
   const clean = sanitizeEmissionRule(rule, states)
   if (index < 0 || index >= clean.length) {
     return clean
   }
-  const next = (stateDigitAt(clean, index) + 1) % normalizeStateCount(states)
+  const count = normalizeStateCount(states)
+  const next = (stateDigitAt(clean, index) + direction + count) % count
   return clean.slice(0, index) + stateChar(next) + clean.slice(index + 1)
 }
 

@@ -122,8 +122,8 @@ export function useCaDescendantsRule(stateCount: Ref<number>, ctx: CaDescendants
     updateDescendantsStatus()
   }
 
-  function onLegendEmissionCellClick(index: number): void {
-    const nextEmission = cycleEmissionDigit(currentEmissionRule(), stateCount.value, index)
+  function onLegendEmissionCellClick(index: number, direction: 1 | -1 = 1): void {
+    const nextEmission = cycleEmissionDigit(currentEmissionRule(), stateCount.value, index, direction)
     emissionInputValue.value = nextEmission
     emissionRules[stateCount.value] = nextEmission
     updateDescendantsStatus()

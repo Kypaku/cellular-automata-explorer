@@ -12,23 +12,58 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'cell-click': [index: number]
+  'cell-click': [index: number, direction: 1 | -1]
 }>()
 
 const COLLAPSE_THRESHOLD = 30
 
 const collapsed = ref(true)
+const searchExpanded = ref(false)
+const searchQuery = ref('')
 
 // Reset to collapsed whenever the rule (and thus the item count) changes.
 watch(
   () => props.legendItems.length,
   () => {
     collapsed.value = true
+    searchExpanded.value = false
+    searchQuery.value = ''
   },
 )
 
-const showToggle = computed(() => props.legendItems.length > COLLAPSE_THRESHOLD)
-const visibleItems = computed(() => (collapsed.value && showToggle.value ? props.legendItems.slice(0, COLLAPSE_THRESHOLD) : props.legendItems))
+// Searching only makes sense (and is only offered) once there are enough
+// conditions that scanning them by eye is impractical.
+const canSearch = computed(() => props.legendItems.length > COLLAPSE_THRESHOLD)
+const showSearchBox = computed(() => canSearch.value && searchExpanded.value)
+const isSearching = computed(() => showSearchBox.value && searchQuery.value.trim().length > 0)
+
+// Keep the original index (needed by cell-click) alongside each item so
+// filtering by search text doesn't break which rule digit gets cycled.
+const filteredIndexedItems = computed(() => {
+  const indexed = props.legendItems.map((item, index) => ({ item, index }))
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) {
+    return indexed
+  }
+  return indexed.filter(({ item }) => item.caption.toLowerCase().includes(q))
+})
+
+// While searching, show every match instead of collapsing - the user has
+// already narrowed the list down on purpose.
+const showToggle = computed(() => !isSearching.value && filteredIndexedItems.value.length > COLLAPSE_THRESHOLD)
+const visibleIndexedItems = computed(() =>
+  collapsed.value && showToggle.value ? filteredIndexedItems.value.slice(0, COLLAPSE_THRESHOLD) : filteredIndexedItems.value,
+)
+
+function onCellClick(index: number, event: MouseEvent): void {
+  event.preventDefault()
+  emit('cell-click', index, 1)
+}
+
+function onCellRightClick(index: number, event: MouseEvent): void {
+  event.preventDefault()
+  emit('cell-click', index, -1)
+}
 </script>
 
 <template>
@@ -38,19 +73,37 @@ const visibleItems = computed(() => (collapsed.value && showToggle.value ? props
   </div>
 
   <div class="ca-legend-wrap">
+    <div v-if="canSearch" class="ca-legend-search">
+      <button type="button" class="ca-link-btn" @click="searchExpanded = !searchExpanded">
+        {{ searchExpanded ? 'Hide search' : 'Search conditions…' }}
+      </button>
+      <template v-if="showSearchBox">
+        <input
+          class="ca-input ca-legend-search-input"
+          type="search"
+          placeholder="Search rule conditions…"
+          v-model="searchQuery"
+        />
+        <span v-if="isSearching" class="ca-meter">{{ filteredIndexedItems.length }} / {{ legendItems.length }} matching</span>
+      </template>
+    </div>
+
     <div class="ca-legend" :class="{ 'ca-legend--local': legendModeLocal }">
-      <div class="ca-cell" v-for="(item, index) in visibleItems" :key="index">
+      <div class="ca-cell" v-for="{ item, index } in visibleIndexedItems" :key="index">
         <div
           class="ca-sq ca-sq--clickable"
           :style="{ background: item.color }"
-          title="click to step to the next state"
-          @click="emit('cell-click', index)"
+          title="click to step to the next state, right-click for the previous one"
+          @click="onCellClick(index, $event)"
+          @contextmenu="onCellRightClick(index, $event)"
         ></div>
         <div class="ca-cap">{{ item.caption }}</div>
       </div>
+      <div v-if="isSearching && filteredIndexedItems.length === 0" class="ca-meter">No matching conditions.</div>
     </div>
     <button v-if="showToggle" type="button" class="ca-legend-toggle" @click="collapsed = !collapsed">
-      {{ collapsed ? `Show all (${legendItems.length})` : 'Collapse' }}
+      {{ collapsed ? `Show all (${filteredIndexedItems.length})` : 'Collapse' }}
     </button>
   </div>
 </template>
+

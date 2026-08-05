@@ -18,6 +18,7 @@ export function detectChaos2(parts: RuleParts, options: Chaos2Options): Chaos2Re
   const cutFraction = Math.max(0, Math.min(90, Number(options.cutTop))) / 100
   const blockSize = Math.max(1, Math.floor(options.blockSize))
   const maxUnique = Math.max(0, Math.min(100, Number(options.maxUnique))) / 100
+  const ignoreStatic = options.ignoreStatic !== false
 
   const { rows, states } = evolveRows(parts, { width, height, keep: height, init })
 
@@ -26,8 +27,27 @@ export function detectChaos2(parts: RuleParts, options: Chaos2Options): Chaos2Re
   const kept = rows.slice(startRow)
 
   const map = buildPatternMap(kept, states, blockSize)
-  const totalBlocks = map.cols * map.rows
-  const distinctPatterns = map.patterns.length
+
+  // A "static" pattern is a block that is a single solid colour (every cell the
+  // same state) — e.g. a resting/frozen region. When requested, such blocks are
+  // dropped from both the distinct-pattern count and the total block count so
+  // they can't dilute (or, for a background-heavy diagram, inflate) the share.
+  const isStaticPattern = (cells: Uint8Array): boolean => {
+    const first = cells[0]
+    for (let i = 1; i < cells.length; i++) {
+      if (cells[i] !== first) {
+        return false
+      }
+    }
+    return true
+  }
+
+  const countedPatterns = ignoreStatic ? map.patterns.filter((pattern) => !isStaticPattern(pattern.cells)) : map.patterns
+
+  const totalBlocks = ignoreStatic
+    ? countedPatterns.reduce((sum, pattern) => sum + pattern.count, 0)
+    : map.cols * map.rows
+  const distinctPatterns = countedPatterns.length
 
   if (totalBlocks <= 0 || distinctPatterns === 0) {
     return {
@@ -42,7 +62,7 @@ export function detectChaos2(parts: RuleParts, options: Chaos2Options): Chaos2Re
   // Patterns that occur exactly once — reported for insight, the verdict itself
   // uses the plain distinct-pattern share.
   let singletonPatterns = 0
-  for (const pattern of map.patterns) {
+  for (const pattern of countedPatterns) {
     if (pattern.count === 1) {
       singletonPatterns += 1
     }

@@ -32,6 +32,7 @@ const collapsed = ref(true)
 const cutTop = ref(CHAOS2_DEFAULTS.cutTop)
 const blockSize = ref(CHAOS2_DEFAULTS.blockSize)
 const maxUnique = ref(CHAOS2_DEFAULTS.maxUnique)
+const ignoreStatic = ref(CHAOS2_DEFAULTS.ignoreStatic)
 
 // The tag that found rules are attached to. Defaults to the built-in NoChaos2 tag
 // but the user can pick any existing tag (or type a new one) to use instead.
@@ -61,6 +62,7 @@ function onRun(config: AnalysisRunConfig): void {
     cutTop: cutTop.value,
     blockSize: blockSize.value,
     maxUnique: maxUnique.value,
+    ignoreStatic: ignoreStatic.value,
     targetTag: targetTag.value.trim() || CHAOS2_TAG,
   })
 }
@@ -107,6 +109,9 @@ function onUndoFound(): void {
           share approaches 100%; an ordered rule reuses a small vocabulary of blocks. The tag
           «{{ targetTag.trim() || CHAOS2_TAG }}» is applied when the share of unique patterns is no more
           than {{ maxUnique }}% — i.e. to rules WITHOUT chaos.
+          When "ignore static patterns" is checked, blocks that are a single solid colour (every cell of
+          the block is the same state, i.e. a "static"/frozen block) are excluded from both the distinct
+          and total block counts before computing the share.
           The tag is independent and can coexist with any class (currently {{ modeLabel }} for
           {{ stateCount }} states).
         </label>
@@ -129,6 +134,13 @@ function onUndoFound(): void {
           <label class="ca-field">
             <span class="ca-field-cap">max unique share K, %</span>
             <input class="ca-number" type="number" min="0" max="100" step="1" v-model.number="maxUnique" :disabled="running" />
+          </label>
+        </div>
+
+        <div class="ca-inline">
+          <label class="ca-check">
+            <input type="checkbox" v-model="ignoreStatic" :disabled="running" />
+            <span>ignore static (solid-colour) patterns</span>
           </label>
         </div>
       </template>

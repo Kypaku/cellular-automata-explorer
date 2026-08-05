@@ -364,6 +364,12 @@ export interface Chaos2Options {
    * so its distinct share approaches 100%.
    */
   maxUnique: number
+  /**
+   * When true (default), blocks that are a single solid colour (every cell holds
+   * the same state, i.e. a "static"/uniform pattern) are excluded from both the
+   * distinct-pattern count and the total block count before computing the share.
+   */
+  ignoreStatic?: boolean
 }
 
 /** Result of {@link detectChaos2}. */

@@ -280,6 +280,7 @@ export const CHAOS2_DEFAULTS = {
   cutTop: 0, // % of the top (transient) rows discarded before tiling
   blockSize: 4, // M: pattern size
   maxUnique: 20, // K% — max share of distinct patterns to still count as "no chaos"
+  ignoreStatic: true, // ignore solid-colour ("static") blocks when computing the share
 }
 
 // Default parameters for the standalone "all states present" test (run separately

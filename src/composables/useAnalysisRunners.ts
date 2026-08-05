@@ -196,6 +196,7 @@ interface RunChaos2AnalysisPayload {
   cutTop: number
   blockSize: number
   maxUnique: number
+  ignoreStatic: boolean
   sourceMode: AnalysisSourceMode
   sampleCount: number
   tags: string[]
@@ -520,6 +521,7 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     cutTop,
     blockSize,
     maxUnique,
+    ignoreStatic,
     sourceMode,
     sampleCount,
     tags: selectedTags,
@@ -542,6 +544,7 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
       cutTop,
       blockSize,
       maxUnique,
+      ignoreStatic,
       sourceMode,
       sampleCount,
       rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
