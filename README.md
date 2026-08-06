@@ -106,3 +106,7 @@ src/
 - Shared types live in `src/types/ca.ts` (rule/init modes, analysis configs and results, rule
   snapshot, etc.).
 - Run `npm run type-check` before committing.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
