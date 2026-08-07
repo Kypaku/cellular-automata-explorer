@@ -199,8 +199,6 @@ const ruleControlsHandlers = {
   codeNumberInput: onCodeNumberInput,
   codeNumberChange: refresh,
   ruleInput: onRuleInput,
-  applyRuleJson: (payload: { rule: string; options: Record<string, string> }) =>
-    applyRuleJson(payload.rule, payload.options),
   convertToTemplate: convertTotalisticToTemplate,
   emissionInput: onEmissionInput,
   setCollisionMode,
@@ -331,7 +329,13 @@ const {
       :key-text="keyText"
       :legend-items="legendItems"
       :legend-mode-local="mode !== 'totalistic'"
+      :mode="mode"
+      :neighborhood="neighborhood"
+      :depth="depth"
+      :rule-input-value="ruleInputValue"
+      :stochastic-options="stochasticOptions"
       @cell-click="onLegendCellClick"
+      @apply-rule-json="(payload) => applyRuleJson(payload.rule, payload.options)"
     />
 
     <!-- <div class="ca-canvas-scroll"> -->

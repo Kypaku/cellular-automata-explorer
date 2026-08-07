@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { MAX_STATE_COUNT, SAFE_STATE_COUNT } from '../../utils/caMath'
-import RuleJsonPanel from './RuleJsonPanel.vue'
 
 const props = defineProps<{
   stateCount: number
@@ -69,7 +68,6 @@ const emit = defineEmits([
   'code-number-input',
   'code-number-change',
   'rule-input',
-  'apply-rule-json',
   'convert-to-template',
   'emission-input',
   'set-collision-mode',
@@ -116,16 +114,6 @@ const emit = defineEmits([
           automatically and states 10+ are written as letters (a, b, c …). Use at your own risk.
         </span>
       </div>
-
-      <RuleJsonPanel
-        v-if="mode !== 'descendants'"
-        :state-count="stateCount"
-        :neighborhood="neighborhood"
-        :depth="depth"
-        :local-rule="ruleInputValue"
-        :stochastic-options="stochasticOptions"
-        @apply="emit('apply-rule-json', $event)"
-      />
 
       <div class="ca-field">
         <span class="ca-label">Rule</span>

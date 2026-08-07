@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { LegendItem } from '../../types/ca'
-import { stateChar } from '../../utils/caMath'
+import { getConfig, stateChar } from '../../utils/caMath'
+import { buildConservingRule, canCheckConservation, checkConservation } from '../../utils/caConservation'
+import RuleJsonPanel from './RuleJsonPanel.vue'
 
 const props = defineProps<{
   colors: string[]
@@ -9,10 +11,17 @@ const props = defineProps<{
   keyText: string
   legendItems: LegendItem[]
   legendModeLocal: boolean
+  mode: string
+  neighborhood: number
+  depth: number
+  ruleInputValue: string
+  /** Templates whose output is drawn at random: neighborhood index → the state digits to pick from. */
+  stochasticOptions: Record<string, string> | null
 }>()
 
 const emit = defineEmits<{
   'cell-click': [index: number, direction: 1 | -1]
+  'apply-rule-json': [payload: { rule: string; options: Record<string, string> }]
 }>()
 
 const COLLAPSE_THRESHOLD = 30
@@ -101,6 +110,15 @@ function onCellRightClick(index: number, event: MouseEvent): void {
       </div>
       <div v-if="isSearching && filteredIndexedItems.length === 0" class="ca-meter">No matching conditions.</div>
     </div>
+    <RuleJsonPanel
+      v-if="mode !== 'descendants'"
+      :state-count="stateCount"
+      :neighborhood="neighborhood"
+      :depth="depth"
+      :local-rule="ruleInputValue"
+      :stochastic-options="stochasticOptions"
+      @apply="emit('apply-rule-json', $event)"
+    />
     <button v-if="showToggle" type="button" class="ca-legend-toggle" @click="collapsed = !collapsed">
       {{ collapsed ? `Show all (${filteredIndexedItems.length})` : 'Collapse' }}
     </button>
