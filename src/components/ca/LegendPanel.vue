@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { LegendItem } from '../../types/ca'
-import { getConfig, stateChar } from '../../utils/caMath'
-import { buildConservingRule, canCheckConservation, checkConservation } from '../../utils/caConservation'
+import { stateChar } from '../../utils/caMath'
 import RuleJsonPanel from './RuleJsonPanel.vue'
 
 const props = defineProps<{
