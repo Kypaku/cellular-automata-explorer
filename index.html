@@ -4,10 +4,157 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CA 2026 </title>
+
+    <title>Cellular Automaton Simulator — 1D CA Explorer, Rule Search &amp; Analysis</title>
+    <meta
+      name="description"
+      content="Interactive one-dimensional cellular automaton simulator: any number of states, totalistic, template (local) and descendant rules, space-time diagrams, batch rule search with automated analyses (classification, fields, gliders, chaos, lines) and tagging."
+    />
+    <meta
+      name="keywords"
+      content="cellular automaton, cellular automata, elementary cellular automaton, rule 30, rule 110, totalistic rule, space-time diagram, gliders, complexity, emergence, simulator, Wolfram classes"
+    />
+    <meta name="author" content="Kypaku" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://kypaku.github.io/pages/ca2026/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Cellular Automaton Simulator" />
+    <meta property="og:title" content="Cellular Automaton Simulator — 1D CA Explorer" />
+    <meta
+      property="og:description"
+      content="Run one-dimensional cellular automata with any number of states, design rules, render space-time diagrams and batch-search rule space with automated analyses."
+    />
+    <meta property="og:url" content="https://kypaku.github.io/pages/ca2026/" />
+    <meta property="og:image" content="https://kypaku.github.io/pages/ca2026/screen1.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Cellular Automaton Simulator — 1D CA Explorer" />
+    <meta
+      name="twitter:description"
+      content="Run one-dimensional cellular automata with any number of states, design rules, render space-time diagrams and batch-search rule space with automated analyses."
+    />
+    <meta name="twitter:image" content="https://kypaku.github.io/pages/ca2026/screen1.jpg" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Cellular Automaton Simulator",
+        "url": "https://kypaku.github.io/pages/ca2026/",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any (web browser)",
+        "browserRequirements": "Requires JavaScript and HTML5 canvas",
+        "description": "Interactive explorer for one-dimensional cellular automata: arbitrary state counts, totalistic / template / descendant rules, configurable neighborhood and temporal depth, space-time diagram rendering, large PNG export, and batch analyses that scan rule space and tag rules.",
+        "author": { "@type": "Person", "name": "Kypaku" },
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+
+    <style>
+      /* Static, crawlable content shown before the Vue app mounts.
+         createApp().mount('#app') clears the container, so it is replaced automatically. */
+      .seo-static {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        text-align: left;
+      }
+      .seo-static h1 {
+        font-size: 1.6em;
+        margin: 0 0 0.5rem;
+      }
+      .seo-static h2 {
+        font-size: 1.1em;
+        margin: 1.4rem 0 0.4rem;
+      }
+      .seo-static ul {
+        margin: 0.4rem 0;
+        padding-left: 1.2rem;
+      }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <article class="seo-static">
+        <h1>Cellular Automaton Simulator</h1>
+        <p>
+          An interactive explorer for one-dimensional cellular automata. Define a rule, run it,
+          and study the resulting space-time diagram &mdash; or let the app scan thousands of
+          rules automatically and tag the interesting ones.
+        </p>
+
+        <h2>What you can do</h2>
+        <ul>
+          <li>
+            Run automata with an arbitrary number of cell states (2&ndash;36), a neighborhood of
+            3, 5 or 7 cells, and a temporal depth of up to 8 previous rows.
+          </li>
+          <li>
+            Define rules in four ways: <strong>totalistic</strong> (keyed by the sum of the
+            neighbors), <strong>by templates</strong> (a full local transition table, editable as
+            JSON, including stochastic entries), <strong>by descendants</strong> (each live cell
+            emits children that collide by a chosen rule), or by generating a random rule.
+          </li>
+          <li>
+            Choose the initial condition: a single live cell or random noise with a given density.
+          </li>
+          <li>
+            Render the space-time diagram on canvas, continue an existing run for extra
+            generations, reduce the field to a pattern map, and export very large diagrams
+            directly to PNG.
+          </li>
+          <li>
+            Generate rules that conserve the number of cells of a chosen &ldquo;particle&rdquo;
+            state, derived statically from the rule table.
+          </li>
+        </ul>
+
+        <h2>Automated rule analysis</h2>
+        <p>
+          Each analysis scans a code range, a random sample of rules, or a set of already tagged
+          rules, and attaches a tag to every match:
+        </p>
+        <ul>
+          <li><strong>Classification</strong> &mdash; dead, fixed, periodic, stable, chaotic, complex.</li>
+          <li><strong>Fields</strong> &mdash; a repeating, possibly drifting pattern covering most of the diagram.</li>
+          <li><strong>Gliders</strong> &mdash; localized structures that reappear shifted sideways.</li>
+          <li><strong>Custom search</strong> &mdash; user-drawn templates with wildcards and equality variables.</li>
+          <li><strong>Absence of lines</strong> &mdash; full-height vertical or diagonal solid streaks.</li>
+          <li><strong>Chaos</strong> and <strong>Chaos 2</strong> &mdash; dominant-pattern share and pattern diversity.</li>
+          <li><strong>All states present</strong> &mdash; every state still occurs late in the run.</li>
+          <li><strong>Sub-analysis</strong> &mdash; an extra pass detecting large surviving structures.</li>
+        </ul>
+        <p>
+          Rules found by any analysis, or saved by hand, are collected in the tags panel and stored
+          in the browser.
+        </p>
+
+        <h2>About cellular automata</h2>
+        <p>
+          A one-dimensional cellular automaton is a row of cells that all update at the same time
+          according to one local rule applied to each cell's neighborhood. Stacking every
+          generation under the previous one produces a space-time diagram. Despite the simplicity
+          of the rules, these systems produce the full range of behavior &mdash; from an
+          immediately dead field to periodic structures, chaos and computationally universal
+          patterns such as elementary rule 110.
+        </p>
+
+        <p>
+          Source code:
+          <a href="https://github.com/Kypaku/ca2026" rel="noopener">github.com/Kypaku/ca2026</a>
+        </p>
+
+        <noscript>
+          <p>
+            <strong>JavaScript is required</strong> to run the simulator itself: the diagram is
+            drawn on an HTML5 canvas in your browser.
+          </p>
+        </noscript>
+      </article>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
