@@ -73,10 +73,96 @@ const { theme, toggleTheme } = useTheme()
       </div>
     </div>
     <CellularAutomatonExplorer />
+
+    <details class="app-about">
+      <summary><h2>About this simulator</h2></summary>
+      <div class="app-about-body">
+        <section>
+          <p>
+            An interactive explorer for one-dimensional cellular automata. Define a rule, run it,
+            and study the resulting space-time diagram — or let the app scan thousands of rules
+            automatically and tag the interesting ones.
+          </p>
+        </section>
+
+        <section>
+          <h3>What you can do</h3>
+          <ul>
+            <li>
+              Run automata with an arbitrary number of cell states (2–36), a neighborhood of 3, 5 or
+              7 cells, and a temporal depth of up to 8 previous rows.
+            </li>
+            <li>
+              Define rules in several ways: <strong>totalistic</strong> (keyed by the sum of the
+              neighbors), <strong>by templates</strong> (a full local transition table, editable as
+              JSON, including stochastic entries), <strong>by descendants</strong> (each live cell
+              emits children that collide by a chosen rule), or by generating a random rule.
+            </li>
+            <li>Start from a single live cell, random noise of a given density, or a custom row.</li>
+            <li>
+              Render the space-time diagram on canvas, continue an existing run for extra
+              generations, reduce the field to a pattern map, and export very large diagrams
+              directly to PNG.
+            </li>
+            <li>
+              Generate rules that conserve the number of cells of a chosen “particle” state, derived
+              statically from the rule table.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Automated rule analysis</h3>
+          <p>
+            Each analysis scans a code range, a random sample of rules, or a set of already tagged
+            rules, and attaches a tag to every match:
+          </p>
+          <ul>
+            <li><strong>Classification</strong> — dead, fixed, periodic, stable, chaotic, complex.</li>
+            <li>
+              <strong>Fields</strong> — a repeating, possibly drifting pattern covering most of the
+              diagram.
+            </li>
+            <li><strong>Gliders</strong> — localized structures that reappear shifted sideways.</li>
+            <li>
+              <strong>Custom search</strong> — user-drawn templates with wildcards and equality
+              variables.
+            </li>
+            <li><strong>Absence of lines</strong> — full-height vertical or diagonal solid streaks.</li>
+            <li>
+              <strong>Chaos</strong> and <strong>Chaos 2</strong> — dominant-pattern share and
+              pattern diversity.
+            </li>
+            <li><strong>All states present</strong> — every state still occurs late in the run.</li>
+            <li><strong>Sub-analysis</strong> — an extra pass detecting large surviving structures.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>About cellular automata</h3>
+          <p>
+            A one-dimensional cellular automaton is a row of cells that all update at the same time
+            according to one local rule applied to each cell's neighborhood. Stacking every
+            generation under the previous one produces a space-time diagram. Despite the simplicity
+            of the rules, these systems produce the full range of behavior — from an immediately
+            dead field to periodic structures, chaos and computationally universal patterns such as
+            elementary rule 110.
+          </p>
+          <p>
+            Source code:
+            <a href="https://github.com/Kypaku/ca2026" rel="noopener">github.com/Kypaku/ca2026</a>
+          </p>
+        </section>
+      </div>
+    </details>
   </main>
 </template>
 
-<style scoped>
+<!--
+  These styles are intentionally NOT scoped: the static shell in index.html
+  reuses the same markup and must look identical before the app mounts.
+-->
+<style>
 .app-shell {
   max-width: 960px;
   margin: 0 auto;
@@ -97,7 +183,7 @@ const { theme, toggleTheme } = useTheme()
   flex-wrap: wrap;
   margin-bottom: 1rem;
 }
-h1 {
+.app-topbar h1 {
   font-size: 1.6em;
   margin: 0;
 }

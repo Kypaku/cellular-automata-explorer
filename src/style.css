@@ -73,3 +73,70 @@ button:focus-visible {
 #app {
   margin: 0 auto;
 }
+
+/*
+ * Shared by the Vue app (App.vue) and by the static shell in index.html, which
+ * is why these rules live here instead of in a scoped <style> block.
+ * Collapsed by default: it is reference/SEO copy, not part of the workflow.
+ */
+.app-about {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.25);
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+.app-about > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  opacity: 0.75;
+}
+.app-about > summary:hover {
+  opacity: 1;
+}
+.app-about > summary::-webkit-details-marker {
+  display: none;
+}
+.app-about > summary::before {
+  content: '▶';
+  font-size: 0.75em;
+}
+.app-about[open] > summary::before {
+  content: '▼';
+}
+.app-about > summary h2 {
+  display: inline;
+  margin: 0;
+  font-size: 1em;
+  font-weight: 600;
+}
+.app-about-body {
+  margin-top: 1rem;
+  columns: 28em 2;
+  column-gap: 40px;
+  opacity: 0.85;
+}
+.app-about-body section {
+  break-inside: avoid;
+  margin-bottom: 1.2rem;
+}
+.app-about-body h3 {
+  font-size: 1em;
+  margin: 0 0 0.3rem;
+}
+.app-about-body p {
+  margin: 0 0 0.5rem;
+}
+.app-about-body ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+/* The static shell ships both theme icons; the theme class picks one. */
+html.dark .static-icon-moon,
+html.light .static-icon-sun {
+  display: none;
+}
