@@ -10,8 +10,8 @@ detection, and more), tagging rules along the way.
 
 [Demo](https://kypaku.github.io/pages/ca2026)
 
-<img src="images/screen1.jpg" width="500" alt="Screenshot">
-<img src="images/screen2.jpg" width="500" alt="Screenshot">
+<img src="images/screen1.jpg" width="500" alt="Space-time diagram of a 3-state totalistic cellular automata rule showing gliders on a periodic background">
+<img src="images/screen2.jpg" width="500" alt="Space-time diagram of a 3-state totalistic cellular automata rule showing gliders on a periodic background">
 
 ## Features
 
