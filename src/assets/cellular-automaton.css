@@ -305,6 +305,43 @@ html.dark .ca-wrap {
 .ca-legend-wrap .ca-legend {
   margin-bottom: 0;
 }
+.ca-probability-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.ca-probability-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 0.5px solid var(--ca-border);
+}
+.ca-probability-input {
+  width: 150px;
+}
+.ca-probability-create {
+  padding: 7px 11px;
+  font-size: 12px;
+}
+.ca-probability-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 0.5px solid var(--ca-border);
+  border-radius: 8px;
+  background: var(--ca-chip-bg);
+  color: var(--ca-chip-text);
+  font: 500 11px/1.2 ui-monospace, monospace;
+  cursor: pointer;
+}
+.ca-probability-choice .ca-sq {
+  flex: 0 0 auto;
+}
 .ca-legend {
   display: flex;
   gap: 8px;
