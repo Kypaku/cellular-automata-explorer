@@ -470,6 +470,43 @@ export interface AgentSurvivalResult {
   learned: number
 }
 
+/**
+ * Everything the evolutionary search needs to turn a genome (a plain digit
+ * string, one gene per rule condition) back into a runnable rule. The rule
+ * *shape* is fixed for a whole run; only the gene values evolve.
+ */
+export interface RuleGenomeContext {
+  stateCount: number
+  mode: RuleMode
+  /** Totalistic/local mode: cells read from each row (3, 5 or 7; default 3). */
+  neighborhood?: number
+  /** Totalistic/local mode: previous rows the rule reads (default 1). */
+  depth?: number
+  /** Descendants mode: collision strategy, held fixed while the emission evolves. */
+  collisionMode?: CollisionMode
+  /** Descendants mode: the constant used when `collisionMode === 'fixed'`. */
+  collisionFixed?: number
+}
+
+/** Genetic-algorithm settings shared by the evolutionary rule search. */
+export interface EvolutionSettings {
+  /** How many genomes live in one generation. */
+  populationSize: number
+  /** How many best genomes survive into the next generation unchanged. */
+  eliteCount: number
+  /** Probability that a single gene is redrawn at random (0..1). */
+  mutationRate: number
+  /** Probability that a child is produced by crossing two parents (0..1). */
+  crossoverRate: number
+  /** How many random candidates compete for each parent slot. */
+  tournamentSize: number
+}
+
+/** Anything that can be ranked by the evolutionary search. */
+export interface EvolutionRanked {
+  fitness: number
+}
+
 /** Colour scheme used to paint distinct patterns in {@link buildPatternMap}. */
 export type PatternPalette = 'color' | 'grayscale'
 

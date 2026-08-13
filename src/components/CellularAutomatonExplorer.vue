@@ -12,6 +12,7 @@ import { useRuleChaosAnalysis } from '../composables/useRuleChaosAnalysis'
 import { useRuleChaos2Analysis } from '../composables/useRuleChaos2Analysis'
 import { useRuleAllStatesAnalysis } from '../composables/useRuleAllStatesAnalysis'
 import { useRuleAgentAnalysis } from '../composables/useRuleAgentAnalysis'
+import { useAgentEvolution } from '../composables/useAgentEvolution'
 import { useRuleSubAnalysis } from '../composables/useRuleSubAnalysis'
 import { useTagInteractions } from '../composables/useTagInteractions'
 import { useAnalysisRunners } from '../composables/useAnalysisRunners'
@@ -30,6 +31,7 @@ import ChaosAnalysisPanel from './ca/ChaosAnalysisPanel.vue'
 import Chaos2AnalysisPanel from './ca/Chaos2AnalysisPanel.vue'
 import AllStatesAnalysisPanel from './ca/AllStatesAnalysisPanel.vue'
 import AgentAnalysisPanel from './ca/AgentAnalysisPanel.vue'
+import AgentEvolutionPanel from './ca/AgentEvolutionPanel.vue'
 import SubAnalysisPanel from './ca/SubAnalysisPanel.vue'
 
 const ca = useCellularAutomaton()
@@ -135,6 +137,27 @@ const { running: allStatesRunning, done: allStatesDone, total: allStatesTotal, p
 
 const agentApi = useRuleAgentAnalysis()
 const { running: agentRunning, done: agentDone, total: agentTotal, progress: agentProgress, currentCode: agentCurrentCode, found: agentFound, results: agentResults, stop: stopAgentAnalysis } = agentApi
+
+const evolutionApi = useAgentEvolution()
+const {
+  running: evolutionRunning,
+  generation: evolutionGeneration,
+  totalGenerations: evolutionTotalGenerations,
+  progress: evolutionProgress,
+  height: evolutionHeight,
+  calibrations: evolutionCalibrations,
+  evaluations: evolutionEvaluations,
+  uniqueRules: evolutionUniqueRules,
+  exhausted: evolutionExhausted,
+  bestFitness: evolutionBestFitness,
+  bestReason: evolutionBestReason,
+  averageFitness: evolutionAverageFitness,
+  survivorCount: evolutionSurvivors,
+  frozenCount: evolutionFrozen,
+  populationCount: evolutionPopulation,
+  rows: evolutionRows,
+  stop: stopAgentEvolution,
+} = evolutionApi
 
 const subApi = useRuleSubAnalysis()
 const { running: subRunning, done: subDone, total: subTotal, progress: subProgress, currentName: subCurrentName, found: subFound, results: subResults, stop: stopSubAnalysis } = subApi
@@ -290,6 +313,11 @@ const {
   onUndoAgentFound,
   onClearAgentTag,
   agentFoundRules,
+  onRunAgentEvolution,
+  onTagEvolutionBest,
+  onUndoEvolutionFound,
+  onClearEvolutionTag,
+  evolutionFoundRules,
   onRunSubAnalysis,
   onUndoSubFound,
   onClearSubTag,
@@ -303,6 +331,7 @@ const {
   collisionMode,
   collisionFixed,
   applyRuleSnapshot,
+  captureRuleSnapshot,
   tags: tagsApi,
   analysis: analysisApi,
   fields: fieldsApi,
@@ -313,6 +342,7 @@ const {
   chaos2: chaos2Api,
   allStates: allStatesApi,
   agent: agentApi,
+  agentEvolution: evolutionApi,
   sub: subApi,
 })
 </script>
@@ -646,6 +676,41 @@ const {
         @stop="stopAgentAnalysis"
         @undo-found="onUndoAgentFound"
         @clear-tag="onClearAgentTag"
+        @select-rule="applyRuleSnapshot"
+      />
+    </div>
+
+    <div class="ca-row">
+      <AgentEvolutionPanel
+        :state-count="stateCount"
+        :mode="mode"
+        :neighborhood="neighborhood"
+        :depth="depth"
+        :running="evolutionRunning"
+        :generation="evolutionGeneration"
+        :total-generations="evolutionTotalGenerations"
+        :progress="evolutionProgress"
+        :current-height="evolutionHeight"
+        :calibrations="evolutionCalibrations"
+        :evaluations="evolutionEvaluations"
+        :unique-rules="evolutionUniqueRules"
+        :exhausted="evolutionExhausted"
+        :best-fitness="evolutionBestFitness"
+        :best-reason="evolutionBestReason"
+        :average-fitness="evolutionAverageFitness"
+        :survivor-count="evolutionSurvivors"
+        :frozen-count="evolutionFrozen"
+        :population-count="evolutionPopulation"
+        :rows="evolutionRows"
+        :can-undo-found="evolutionFoundRules.length > 0"
+        :found-count="evolutionFoundRules.length"
+        :tags="tags"
+        :tag-counts="tagCounts"
+        @run="onRunAgentEvolution"
+        @stop="stopAgentEvolution"
+        @tag-best="onTagEvolutionBest"
+        @undo-found="onUndoEvolutionFound"
+        @clear-tag="onClearEvolutionTag"
         @select-rule="applyRuleSnapshot"
       />
     </div>

@@ -13,5 +13,21 @@ export { detectChaos } from './analysis/chaos'
 export { detectChaos2 } from './analysis/chaos2'
 export { detectAllStates } from './analysis/allStates'
 export { detectAgentSurvival } from './analysis/agentSurvival'
+export {
+  agentFitness,
+  breedPopulation,
+  crossoverGenomes,
+  genomeKey,
+  genomeLength,
+  genomeToParts,
+  genomeToSnapshot,
+  genomeToTotalisticCode,
+  jitterGenome,
+  mutateGenome,
+  randomGenome,
+  sanitizeGenome,
+  snapshotToGenome,
+  tournamentPick,
+} from './analysis/evolution'
 export { testRuleAgainstAllTags } from './analysis/tagTest'
 export type { TagTestResult } from './analysis/tagTest'

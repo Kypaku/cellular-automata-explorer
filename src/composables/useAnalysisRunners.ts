@@ -11,8 +11,9 @@ import type {
   RuleSnapshot,
   SubAnalyzeOptions,
 } from '../types/ca'
-import { AGENT_TAG, ALL_STATES_TAG, CHAOS_TAG, CHAOS2_TAG, CUSTOM_SEARCH_TAG, FIELDS_TAG, GLIDERS_TAG, LARGE_STRUCTURES_TAG, LINES_TAG } from '../constants/ca'
+import { AGENT_EVOLUTION_TAG, AGENT_TAG, ALL_STATES_TAG, CHAOS_TAG, CHAOS2_TAG, CUSTOM_SEARCH_TAG, FIELDS_TAG, GLIDERS_TAG, LARGE_STRUCTURES_TAG, LINES_TAG } from '../constants/ca'
 import { partsFromSnapshot } from '../utils/caMath'
+import { snapshotToGenome } from '../utils/analysis/evolution'
 import type { useRuleTags } from './useRuleTags'
 import type { useRuleAnalysis } from './useRuleAnalysis'
 import type { useRuleFieldsAnalysis } from './useRuleFieldsAnalysis'
@@ -23,6 +24,7 @@ import type { useRuleChaosAnalysis } from './useRuleChaosAnalysis'
 import type { useRuleChaos2Analysis } from './useRuleChaos2Analysis'
 import type { useRuleAllStatesAnalysis } from './useRuleAllStatesAnalysis'
 import type { useRuleAgentAnalysis } from './useRuleAgentAnalysis'
+import type { useAgentEvolution } from './useAgentEvolution'
 import type { useRuleSubAnalysis } from './useRuleSubAnalysis'
 
 export interface AnalysisRunnersDeps {
@@ -33,6 +35,7 @@ export interface AnalysisRunnersDeps {
   collisionMode: Ref<CollisionMode>
   collisionFixed: Ref<number>
   applyRuleSnapshot: (snapshot: RuleSnapshot) => void
+  captureRuleSnapshot: () => RuleSnapshot
   tags: ReturnType<typeof useRuleTags>
   analysis: ReturnType<typeof useRuleAnalysis>
   fields: ReturnType<typeof useRuleFieldsAnalysis>
@@ -43,6 +46,7 @@ export interface AnalysisRunnersDeps {
   chaos2: ReturnType<typeof useRuleChaos2Analysis>
   allStates: ReturnType<typeof useRuleAllStatesAnalysis>
   agent: ReturnType<typeof useRuleAgentAnalysis>
+  agentEvolution: ReturnType<typeof useAgentEvolution>
   sub: ReturnType<typeof useRuleSubAnalysis>
 }
 
@@ -235,6 +239,32 @@ interface RunAgentAnalysisPayload {
   targetTag: string
 }
 
+interface RunAgentEvolutionPayload {
+  width: number
+  height: number
+  maxHeight: number
+  heightGrowth: number
+  survivorPercent: number
+  init: AnalysisInitMode
+  memorySize: number
+  sequenceLength: number
+  health: number
+  stagnantRepeats: number
+  populationSize: number
+  generations: number
+  eliteCount: number
+  mutationRate: number
+  crossoverRate: number
+  tournamentSize: number
+  frozenPenalty: number
+  seedCurrent: boolean
+}
+
+interface TagBestPayload {
+  targetTag: string
+  count: number
+}
+
 interface RunSubAnalysisPayload {
   sourceMode: AnalysisSourceMode
   from: number
@@ -254,7 +284,7 @@ interface RunSubAnalysisPayload {
  * "select rule" from the sub-analysis results list back into the rule editor.
  */
 export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
-  const { stateCount, mode, neighborhood, depth, collisionMode, collisionFixed, applyRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, chaos2, allStates, agent, sub } = deps
+  const { stateCount, mode, neighborhood, depth, collisionMode, collisionFixed, applyRuleSnapshot, captureRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, chaos2, allStates, agent, agentEvolution, sub } = deps
 
   /** Resolves the union of saved rules carrying any of the given tags into
    * classifier-ready inputs (parts + snapshot + display name). */
@@ -651,8 +681,57 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     })
   }
 
-  const subTracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, LARGE_STRUCTURES_TAG)
+  const evolutionTracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, AGENT_EVOLUTION_TAG)
 
+  /**
+   * Evolutionary rule search: the rule is a genome, every rule condition is a
+   * gene, and the agent-survival test scores each candidate (see
+   * `useAgentEvolution`). Nothing is tagged automatically — the user picks how
+   * many of the best rules to tag once a run looks promising.
+   */
+  function onRunAgentEvolution(payload: RunAgentEvolutionPayload): void {
+    const genomeContext = {
+      stateCount: stateCount.value,
+      mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
+      collisionMode: collisionMode.value,
+      collisionFixed: collisionFixed.value,
+    }
+    agentEvolution.start({
+      ...genomeContext,
+      width: payload.width,
+      init: payload.init,
+      height: payload.height,
+      maxHeight: payload.maxHeight,
+      heightGrowth: payload.heightGrowth,
+      survivorPercent: payload.survivorPercent,
+      memorySize: payload.memorySize,
+      sequenceLength: payload.sequenceLength,
+      health: payload.health,
+      stagnantRepeats: payload.stagnantRepeats,
+      populationSize: payload.populationSize,
+      generations: payload.generations,
+      eliteCount: payload.eliteCount,
+      mutationRate: payload.mutationRate,
+      crossoverRate: payload.crossoverRate,
+      tournamentSize: payload.tournamentSize,
+      frozenPenalty: payload.frozenPenalty,
+      seedGenome: payload.seedCurrent ? snapshotToGenome(captureRuleSnapshot(), genomeContext) : undefined,
+    })
+  }
+
+  /** Tags the best `count` rules of the current population with the chosen tag. */
+  function onTagEvolutionBest({ targetTag, count }: TagBestPayload): void {
+    const tag = String(targetTag || '').trim() || AGENT_EVOLUTION_TAG
+    evolutionTracker.reset()
+    const apply = evolutionTracker.apply(tag)
+    for (const row of agentEvolution.rows.slice(0, Math.max(1, Math.floor(count)))) {
+      apply(true, row.parts, row.snapshot)
+    }
+  }
+
+  const subTracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, LARGE_STRUCTURES_TAG)
   function onRunSubAnalysis({
     sourceMode,
     from,
@@ -723,6 +802,11 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     onUndoAgentFound: agentTracker.undo,
     onClearAgentTag: agentTracker.clear,
     agentFoundRules: agentTracker.foundRules,
+    onRunAgentEvolution,
+    onTagEvolutionBest,
+    onUndoEvolutionFound: evolutionTracker.undo,
+    onClearEvolutionTag: evolutionTracker.clear,
+    evolutionFoundRules: evolutionTracker.foundRules,
     onRunSubAnalysis,
     onUndoSubFound: subTracker.undo,
     onClearSubTag: subTracker.clear,

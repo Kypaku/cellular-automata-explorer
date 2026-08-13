@@ -112,6 +112,11 @@ export const ALL_STATES_TAG = 'AllStates'
 // tagged when the agent is still alive after the last generation.
 export const AGENT_TAG = 'AgentSurvives'
 
+// Extra, non-exclusive tag applied to the best rules found by the evolutionary
+// search: rules the agent does NOT survive, that do not freeze, and where it
+// stays alive as long as possible before dying.
+export const AGENT_EVOLUTION_TAG = 'AgentHunted'
+
 // Sentinel cell value inside a CustomPattern meaning "match any state value".
 export const CUSTOM_ANY = -1
 
@@ -317,6 +322,31 @@ export const AGENT_DEFAULTS = {
   sequenceLength: 4, // L: length of one remembered sequence, in generations
   health: 10, // health points; one is lost per unknown sequence
   stagnantRepeats: 3, // identical generations in a row that end the run early
+}
+
+// Default parameters for the evolutionary (genetic) rule search driven by the
+// agent-survival test. The rule is the genome and every rule condition is one
+// gene; a rule scores by how LONG the agent stays alive before dying, so the
+// search hunts for rules that are unpredictable enough to eventually kill the
+// agent yet keep it alive for as long as possible. Frozen rules (an empty or
+// endlessly repeating generation) are scaled down by `frozenPenalty`, and when
+// too many rules of a generation survive the whole H (they can no longer be told
+// apart) the height is multiplied by `heightGrowth` up to `maxHeight`.
+export const AGENT_EVOLUTION_DEFAULTS = {
+  width: 201, // W of the evolved generation
+  height: 200, // starting H, raised automatically while calibrating
+  maxHeight: 5000, // H is never raised past this
+  heightGrowth: 2, // multiplier applied to H when calibrating
+  survivorPercent: 10, // % of a generation that must survive H to trigger a raise
+  init: 'random' as 'random' | 'single', // 'random' | 'single'
+  populationSize: 40, // genomes per generation
+  generations: 30, // how many generations one run evolves
+  eliteCount: 4, // best genomes carried over unchanged
+  mutationRate: 5, // % of genes redrawn in a child
+  crossoverRate: 70, // % of children produced by crossing two parents
+  tournamentSize: 3, // candidates competing for each parent slot
+  frozenPenalty: 10, // % of the score kept by a frozen rule
+  tagCount: 10, // how many of the best rules the "tag best" button tags
 }
 
 // Default parameters for the per-rule "sub-analysis": for every rule carrying a
