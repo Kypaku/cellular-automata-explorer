@@ -753,6 +753,11 @@ html.dark .ca-count-chip.ca-sub-ok {
   background: var(--ca-chip-bg);
   color: var(--ca-text-muted);
 }
+.ca-sub-results {
+  max-height: 280px;
+  overflow-y: auto;
+  width: 100%;
+}
 .ca-sub-result {
   cursor: pointer;
   padding: 2px 6px;
@@ -762,6 +767,18 @@ html.dark .ca-count-chip.ca-sub-ok {
 .ca-sub-result:focus-visible {
   background: var(--ca-chip-bg);
   outline: none;
+}
+
+/* Agent-survival panel: filter / sort / paging controls around the detail list */
+.ca-agent-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.ca-agent-details .ca-seg button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 /* Custom-search pattern editor */

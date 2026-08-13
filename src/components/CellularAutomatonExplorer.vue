@@ -11,6 +11,7 @@ import { useRuleLinesAnalysis } from '../composables/useRuleLinesAnalysis'
 import { useRuleChaosAnalysis } from '../composables/useRuleChaosAnalysis'
 import { useRuleChaos2Analysis } from '../composables/useRuleChaos2Analysis'
 import { useRuleAllStatesAnalysis } from '../composables/useRuleAllStatesAnalysis'
+import { useRuleAgentAnalysis } from '../composables/useRuleAgentAnalysis'
 import { useRuleSubAnalysis } from '../composables/useRuleSubAnalysis'
 import { useTagInteractions } from '../composables/useTagInteractions'
 import { useAnalysisRunners } from '../composables/useAnalysisRunners'
@@ -28,6 +29,7 @@ import LinesAnalysisPanel from './ca/LinesAnalysisPanel.vue'
 import ChaosAnalysisPanel from './ca/ChaosAnalysisPanel.vue'
 import Chaos2AnalysisPanel from './ca/Chaos2AnalysisPanel.vue'
 import AllStatesAnalysisPanel from './ca/AllStatesAnalysisPanel.vue'
+import AgentAnalysisPanel from './ca/AgentAnalysisPanel.vue'
 import SubAnalysisPanel from './ca/SubAnalysisPanel.vue'
 
 const ca = useCellularAutomaton()
@@ -130,6 +132,9 @@ const { running: chaos2Running, done: chaos2Done, total: chaos2Total, progress: 
 
 const allStatesApi = useRuleAllStatesAnalysis()
 const { running: allStatesRunning, done: allStatesDone, total: allStatesTotal, progress: allStatesProgress, currentCode: allStatesCurrentCode, found: allStatesFound, stop: stopAllStatesAnalysis } = allStatesApi
+
+const agentApi = useRuleAgentAnalysis()
+const { running: agentRunning, done: agentDone, total: agentTotal, progress: agentProgress, currentCode: agentCurrentCode, found: agentFound, results: agentResults, stop: stopAgentAnalysis } = agentApi
 
 const subApi = useRuleSubAnalysis()
 const { running: subRunning, done: subDone, total: subTotal, progress: subProgress, currentName: subCurrentName, found: subFound, results: subResults, stop: stopSubAnalysis } = subApi
@@ -281,6 +286,10 @@ const {
   onUndoAllStatesFound,
   onClearAllStatesTag,
   allStatesFoundRules,
+  onRunAgentAnalysis,
+  onUndoAgentFound,
+  onClearAgentTag,
+  agentFoundRules,
   onRunSubAnalysis,
   onUndoSubFound,
   onClearSubTag,
@@ -303,6 +312,7 @@ const {
   chaos: chaosApi,
   chaos2: chaos2Api,
   allStates: allStatesApi,
+  agent: agentApi,
   sub: subApi,
 })
 </script>
@@ -613,6 +623,30 @@ const {
         @stop="stopAllStatesAnalysis"
         @undo-found="onUndoAllStatesFound"
         @clear-tag="onClearAllStatesTag"
+      />
+    </div>
+
+    <div class="ca-row">
+      <AgentAnalysisPanel
+        :state-count="stateCount"
+        :mode="mode"
+        :code-max="codeMax"
+        :running="agentRunning"
+        :done="agentDone"
+        :total="agentTotal"
+        :progress="agentProgress"
+        :current-code="agentCurrentCode"
+        :found="agentFound"
+        :can-undo-found="agentFoundRules.length > 0"
+        :tags="tags"
+        :tag-counts="tagCounts"
+        :rules="rules"
+        :results="agentResults"
+        @run="onRunAgentAnalysis"
+        @stop="stopAgentAnalysis"
+        @undo-found="onUndoAgentFound"
+        @clear-tag="onClearAgentTag"
+        @select-rule="applyRuleSnapshot"
       />
     </div>
 

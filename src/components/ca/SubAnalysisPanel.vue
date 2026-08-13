@@ -45,15 +45,33 @@ const height = ref(SUBANALYSIS_DEFAULTS.height)
 const minWidth = ref(SUBANALYSIS_DEFAULTS.minWidth)
 const maxWidth = ref(SUBANALYSIS_DEFAULTS.maxWidth)
 const step = ref(SUBANALYSIS_DEFAULTS.step)
+const usePatterns = ref(SUBANALYSIS_DEFAULTS.usePatterns)
+const patternSize = ref(SUBANALYSIS_DEFAULTS.patternSize)
+
+// Detailed per-rule results are hidden by default: a full scan can produce
+// thousands of rows and the panel is only meant to show the summary counts.
+const showDetails = ref(false)
 
 const chunkNote = computed(() => {
   const w = clampInt(minWidth.value, 4, 4000, SUBANALYSIS_DEFAULTS.minWidth)
+  const rows = clampInt(keep.value, 1, 4000, SUBANALYSIS_DEFAULTS.keep)
+  if (usePatterns.value) {
+    const m = clampInt(patternSize.value, 1, 64, SUBANALYSIS_DEFAULTS.patternSize)
+    const cols = Math.floor(w / m)
+    const cc = Math.max(1, Math.round((chunkPercent.value / 100) * cols))
+    const chunks = Math.floor(cols / cc)
+    return `at W=${w}: ${cols} pattern columns of ${m}×${m}, chunk ≈ ${cc} columns × ${Math.floor(rows / m)} pattern rows, ~${chunks} chunks`
+  }
   const cw = Math.max(1, Math.round((chunkPercent.value / 100) * w))
   const chunks = Math.floor(w / cw)
-  return `at W=${w}: chunk ≈ ${cw} cells × ${clampInt(keep.value, 1, 4000, SUBANALYSIS_DEFAULTS.keep)} rows, ~${chunks} chunks`
+  return `at W=${w}: chunk ≈ ${cw} cells × ${rows} rows, ~${chunks} chunks`
 })
 
 const missingCount = computed(() => props.results.filter((r) => r.foundWidth === null).length)
+
+function formatDev(dev: number | null): string {
+  return dev === null ? '—' : `${(dev * 100).toFixed(1)}%`
+}
 
 function clampInt(value: number, min: number, max: number, fallback: number): number {
   const num = Math.floor(Number(value))
@@ -69,6 +87,7 @@ function onRun(config: AnalysisRunConfig): void {
   minWidth.value = clampInt(minWidth.value, 4, 40000, SUBANALYSIS_DEFAULTS.minWidth)
   maxWidth.value = clampInt(maxWidth.value, minWidth.value, 40000, SUBANALYSIS_DEFAULTS.maxWidth)
   step.value = clampInt(step.value, 1, 10000, SUBANALYSIS_DEFAULTS.step)
+  patternSize.value = clampInt(patternSize.value, 1, 64, SUBANALYSIS_DEFAULTS.patternSize)
 
   const cp = Number(chunkPercent.value)
   chunkPercent.value = Number.isNaN(cp) ? SUBANALYSIS_DEFAULTS.chunkPercent : Math.max(0.5, Math.min(50, cp))
@@ -93,6 +112,8 @@ function onRun(config: AnalysisRunConfig): void {
       minWidth: minWidth.value,
       maxWidth: maxWidth.value,
       step: step.value,
+      usePatterns: usePatterns.value,
+      patternSize: patternSize.value,
     },
   })
 }
@@ -174,9 +195,55 @@ function onRun(config: AnalysisRunConfig): void {
         </div>
 
         <div class="ca-meter">{{ chunkNote }}</div>
+
+        <label class="ca-check">
+          <input type="checkbox" v-model="usePatterns" :disabled="running" />
+          <span>count patterns instead of cells</span>
+        </label>
+
+        <div class="ca-inline" v-if="usePatterns">
+          <label class="ca-field">
+            <span class="ca-field-cap">pattern size M</span>
+            <input class="ca-number" type="number" min="1" max="64" step="1" v-model.number="patternSize" :disabled="running" />
+          </label>
+          <div class="ca-meter">
+            the kept rows are tiled into M×M patterns (as in «convert field to patterns»);
+            every block scores by rarity — the most frequent (background) pattern gives 0,
+            rare patterns give close to 1 — instead of the sum of cell values
+          </div>
+        </div>
+
+        <label class="ca-check">
+          <input type="checkbox" v-model="showDetails" />
+          <span>show detailed results</span>
+        </label>
       </template>
 
       <template #footer>
+        <div v-if="showDetails" class="ca-sub-results">
+          <div v-if="!results.length" class="ca-meter">No results yet.</div>
+          <ul v-else class="ca-count-list">
+            <li
+              v-for="row in results"
+              :key="row.id"
+              class="ca-count-item ca-sub-result"
+              role="button"
+              tabindex="0"
+              @click="emit('select-rule', row.snapshot)"
+              @keydown.enter.prevent="emit('select-rule', row.snapshot)"
+            >
+              <span class="ca-count-chip" :class="row.foundWidth === null ? 'ca-sub-miss' : 'ca-sub-ok'">
+                {{ row.foundWidth === null ? 'no width' : `W ${row.foundWidth}` }}
+              </span>
+              <span class="ca-count-value">{{ row.name }}</span>
+              <span class="ca-count-desc">
+                best W {{ row.bestWidth === null ? '—' : row.bestWidth }} · deviation {{ formatDev(row.bestDev) }} ·
+                widths tested {{ row.tested }}
+              </span>
+            </li>
+          </ul>
+        </div>
+
         <TagFoundActions
           :target-tag="targetTag.trim() || LARGE_STRUCTURES_TAG"
           :tag-count="targetTagCount"

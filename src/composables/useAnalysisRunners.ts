@@ -11,7 +11,7 @@ import type {
   RuleSnapshot,
   SubAnalyzeOptions,
 } from '../types/ca'
-import { ALL_STATES_TAG, CHAOS_TAG, CHAOS2_TAG, CUSTOM_SEARCH_TAG, FIELDS_TAG, GLIDERS_TAG, LARGE_STRUCTURES_TAG, LINES_TAG } from '../constants/ca'
+import { AGENT_TAG, ALL_STATES_TAG, CHAOS_TAG, CHAOS2_TAG, CUSTOM_SEARCH_TAG, FIELDS_TAG, GLIDERS_TAG, LARGE_STRUCTURES_TAG, LINES_TAG } from '../constants/ca'
 import { partsFromSnapshot } from '../utils/caMath'
 import type { useRuleTags } from './useRuleTags'
 import type { useRuleAnalysis } from './useRuleAnalysis'
@@ -22,6 +22,7 @@ import type { useRuleLinesAnalysis } from './useRuleLinesAnalysis'
 import type { useRuleChaosAnalysis } from './useRuleChaosAnalysis'
 import type { useRuleChaos2Analysis } from './useRuleChaos2Analysis'
 import type { useRuleAllStatesAnalysis } from './useRuleAllStatesAnalysis'
+import type { useRuleAgentAnalysis } from './useRuleAgentAnalysis'
 import type { useRuleSubAnalysis } from './useRuleSubAnalysis'
 
 export interface AnalysisRunnersDeps {
@@ -41,6 +42,7 @@ export interface AnalysisRunnersDeps {
   chaos: ReturnType<typeof useRuleChaosAnalysis>
   chaos2: ReturnType<typeof useRuleChaos2Analysis>
   allStates: ReturnType<typeof useRuleAllStatesAnalysis>
+  agent: ReturnType<typeof useRuleAgentAnalysis>
   sub: ReturnType<typeof useRuleSubAnalysis>
 }
 
@@ -216,6 +218,23 @@ interface RunAllStatesAnalysisPayload {
   targetTag: string
 }
 
+interface RunAgentAnalysisPayload {
+  from: number
+  to: number
+  width: number
+  height: number
+  init: AnalysisInitMode
+  memorySize: number
+  sequenceLength: number
+  health: number
+  stagnantRepeats: number
+  collectDetails: boolean
+  sourceMode: AnalysisSourceMode
+  sampleCount: number
+  tags: string[]
+  targetTag: string
+}
+
 interface RunSubAnalysisPayload {
   sourceMode: AnalysisSourceMode
   from: number
@@ -235,7 +254,7 @@ interface RunSubAnalysisPayload {
  * "select rule" from the sub-analysis results list back into the rule editor.
  */
 export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
-  const { stateCount, mode, neighborhood, depth, collisionMode, collisionFixed, applyRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, chaos2, allStates, sub } = deps
+  const { stateCount, mode, neighborhood, depth, collisionMode, collisionFixed, applyRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, chaos2, allStates, agent, sub } = deps
 
   /** Resolves the union of saved rules carrying any of the given tags into
    * classifier-ready inputs (parts + snapshot + display name). */
@@ -588,6 +607,50 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     })
   }
 
+  const agentTracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, AGENT_TAG)
+
+  function onRunAgentAnalysis({
+    from,
+    to,
+    width,
+    height,
+    init: agentInit,
+    memorySize,
+    sequenceLength,
+    health,
+    stagnantRepeats,
+    collectDetails,
+    sourceMode,
+    sampleCount,
+    tags: selectedTags,
+    targetTag,
+  }: RunAgentAnalysisPayload): void {
+    const tag = String(targetTag || '').trim() || AGENT_TAG
+    agentTracker.reset()
+    agent.start({
+      stateCount: stateCount.value,
+      mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
+      collisionMode: collisionMode.value,
+      collisionFixed: collisionFixed.value,
+      from,
+      to,
+      width,
+      height,
+      init: agentInit,
+      memorySize,
+      sequenceLength,
+      health,
+      stagnantRepeats,
+      collectDetails,
+      sourceMode,
+      sampleCount,
+      rules: sourceMode === 'tags' ? rulesForTags(selectedTags) : undefined,
+      apply: agentTracker.apply(tag),
+    })
+  }
+
   const subTracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, LARGE_STRUCTURES_TAG)
 
   function onRunSubAnalysis({
@@ -656,6 +719,10 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     onUndoAllStatesFound: allStatesTracker.undo,
     onClearAllStatesTag: allStatesTracker.clear,
     allStatesFoundRules: allStatesTracker.foundRules,
+    onRunAgentAnalysis,
+    onUndoAgentFound: agentTracker.undo,
+    onClearAgentTag: agentTracker.clear,
+    agentFoundRules: agentTracker.foundRules,
     onRunSubAnalysis,
     onUndoSubFound: subTracker.undo,
     onClearSubTag: subTracker.clear,

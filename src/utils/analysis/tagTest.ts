@@ -12,6 +12,7 @@ import {
   CHAOS_DEFAULTS,
   CHAOS2_DEFAULTS,
   ALL_STATES_DEFAULTS,
+  AGENT_DEFAULTS,
   SUBANALYSIS_DEFAULTS,
   FIELDS_TAG,
   GLIDERS_TAG,
@@ -20,6 +21,7 @@ import {
   CHAOS_TAG,
   CHAOS2_TAG,
   ALL_STATES_TAG,
+  AGENT_TAG,
   LARGE_STRUCTURES_TAG,
   CUSTOM_ANY,
 } from '../../constants/ca'
@@ -32,6 +34,7 @@ import { detectLines } from './lines'
 import { detectChaos } from './chaos'
 import { detectChaos2 } from './chaos2'
 import { detectAllStates } from './allStates'
+import { detectAgentSurvival } from './agentSurvival'
 import { subAnalyzeRule } from './subAnalysis'
 
 /** One line of the "test current rule against all analyses" result. */
@@ -103,6 +106,10 @@ export function testRuleAgainstAllTags(parts: RuleParts, customPatterns: CustomP
   // All states present in the bottom part of the diagram.
   const allStates = detectAllStates(parts, { ...ALL_STATES_DEFAULTS })
   results.push({ tag: ALL_STATES_TAG, passed: allStates.hasAllStates, kind: 'orthogonal' })
+
+  // Agent survival (tag applied when the memory-limited agent reaches the last generation).
+  const agent = detectAgentSurvival(parts, { ...AGENT_DEFAULTS })
+  results.push({ tag: AGENT_TAG, passed: agent.survived, kind: 'orthogonal' })
 
   // Large structures (tag applied when the diagram never homogenizes).
   const sub = subAnalyzeRule(parts, { ...SUBANALYSIS_DEFAULTS })

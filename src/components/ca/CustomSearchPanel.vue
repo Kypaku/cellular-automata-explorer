@@ -15,6 +15,7 @@ import {
 } from '../../constants/ca'
 import type { AnalysisRunConfig, CustomPattern, TaggedRule } from '../../types/ca'
 import { stateChar } from '../../utils/caMath'
+import { trySetItem } from '../../composables/useStorageWarning'
 import AnalysisRunControls from './AnalysisRunControls.vue'
 import TagTargetSelector from './TagTargetSelector.vue'
 import TagFoundActions from './TagFoundActions.vue'
@@ -112,11 +113,7 @@ const patterns = reactive<CustomPattern[]>(loadPatterns())
 watch(
   patterns,
   () => {
-    try {
-      localStorage.setItem(CUSTOM_SEARCH_STORAGE_KEY, JSON.stringify(patterns))
-    } catch {
-      // ignore storage errors (private mode, quota exceeded, etc.)
-    }
+    trySetItem(CUSTOM_SEARCH_STORAGE_KEY, JSON.stringify(patterns))
   },
   { deep: true }
 )

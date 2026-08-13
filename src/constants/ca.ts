@@ -105,6 +105,13 @@ export const LARGE_STRUCTURES_TAG = 'LargeStructures'
 // possible state value (0..states-1) shows up at least once among those rows.
 export const ALL_STATES_TAG = 'AllStates'
 
+// Extra, non-exclusive analysis tag produced by the "agent survival" test. A
+// memory-limited agent sits in the middle column and reads one cell per
+// generation; it can remember N temporal sequences of length L and loses a health
+// point whenever the sequence it just read is not in its memory. The rule is
+// tagged when the agent is still alive after the last generation.
+export const AGENT_TAG = 'AgentSurvives'
+
 // Sentinel cell value inside a CustomPattern meaning "match any state value".
 export const CUSTOM_ANY = -1
 
@@ -295,6 +302,23 @@ export const ALL_STATES_DEFAULTS = {
   bottomPercent: 50, // % of rows counted from the bottom that must contain every state
 }
 
+// Default parameters for the standalone "agent survival" test (run separately
+// from the class analysis, since its tag is orthogonal). The rule is evolved row
+// by row up to `height` generations; an agent in the middle column reads one cell
+// per generation and keeps the last `sequenceLength` readings as a temporal
+// sequence. It can hold `memorySize` such sequences (least recently seen one is
+// forgotten first) and loses a health point on every sequence it does not know.
+// The rule is tagged when the agent reaches the last generation alive.
+export const AGENT_DEFAULTS = {
+  width: 201, // W of the evolved generation
+  height: 500, // maximum number of generations the agent must survive
+  init: 'random' as 'random' | 'single', // 'random' | 'single'
+  memorySize: 8, // N: sequences the agent can remember at once
+  sequenceLength: 4, // L: length of one remembered sequence, in generations
+  health: 10, // health points; one is lost per unknown sequence
+  stagnantRepeats: 3, // identical generations in a row that end the run early
+}
+
 // Default parameters for the per-rule "sub-analysis": for every rule carrying a
 // selected tag we search for the smallest width at which the pattern becomes
 // spatially uniform, i.e. the sum of cell values over the last K rows is nearly
@@ -309,4 +333,6 @@ export const SUBANALYSIS_DEFAULTS = {
   minWidth: 40, // smallest width tried in the search
   maxWidth: 400, // largest width tried in the search
   step: 10, // width increment between successive tries
+  usePatterns: false, // count M×M patterns instead of raw cell values
+  patternSize: 4, // M: pattern block size used when usePatterns is on
 }

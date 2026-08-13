@@ -189,6 +189,11 @@ export interface SubAnalyzeOptions {
   minWidth: number
   maxWidth: number
   step: number
+  /** Measure chunks by M×M patterns (as in the "convert to patterns" view)
+   * instead of raw cell values. */
+  usePatterns?: boolean
+  /** Pattern block size M used when `usePatterns` is on. */
+  patternSize?: number
 }
 
 /** Result of {@link subAnalyzeRule}. */
@@ -420,6 +425,49 @@ export interface AllStatesResult {
   missingStates: number[]
   /** Total number of possible state values for this rule. */
   totalStates: number
+}
+
+/** Why an {@link detectAgentSurvival} run finished. */
+export type AgentStopReason =
+  /** The agent stayed alive until the last (maxHeight) generation. */
+  | 'survived'
+  /** The agent ran out of health on an unknown sequence. */
+  | 'died'
+  /** The whole row went empty (state 0 everywhere) — the rule died out. */
+  | 'dead'
+  /** The same generation repeated `stagnantRepeats` times in a row. */
+  | 'stagnant'
+
+/** Options for {@link detectAgentSurvival}. */
+export interface AgentSurvivalOptions {
+  width: number
+  /** Maximum number of generations the agent has to survive. */
+  height: number
+  init: AnalysisInitMode
+  /** N: how many distinct temporal sequences the agent can remember at once. */
+  memorySize: number
+  /** L: length (in generations) of a remembered sequence. */
+  sequenceLength: number
+  /** Health points; every unknown sequence costs one. */
+  health: number
+  /** How many identical generations in a row end the run early (0 = never). */
+  stagnantRepeats: number
+}
+
+/** Result of {@link detectAgentSurvival}. */
+export interface AgentSurvivalResult {
+  /** True only when the agent reached the last generation alive. */
+  survived: boolean
+  /** Why the run finished. */
+  stopReason: AgentStopReason
+  /** How many generations were simulated. */
+  generations: number
+  /** Health left when the run finished (0 when the agent died). */
+  healthLeft: number
+  /** How many unknown sequences the agent ran into. */
+  unknownHits: number
+  /** How many distinct sequences the agent held in memory at the end. */
+  learned: number
 }
 
 /** Colour scheme used to paint distinct patterns in {@link buildPatternMap}. */

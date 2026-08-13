@@ -1,6 +1,7 @@
 // Pure, non-reactive helpers backing useRuleTags: localStorage (de)serialization,
 // id generation, record normalization and rule identity/name derivation.
 import type { RuleParts, TaggedRule } from '../types/ca'
+import { trySetItem } from './useStorageWarning'
 
 export const TAGS_STORAGE_KEY = 'ca-rule-tags'
 export const RULES_STORAGE_KEY = 'ca-tagged-rules'
@@ -26,9 +27,10 @@ export function loadJSON(key: string, fallback: unknown[]): unknown[] {
 
 export function saveJSON(key: string, value: unknown): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value))
+    trySetItem(key, JSON.stringify(value))
   } catch {
-    // ignore storage errors (private mode, quota exceeded, etc.)
+    // ignore serialization errors (circular refs, etc.) - the storage warning
+    // only concerns localStorage.setItem itself
   }
 }
 

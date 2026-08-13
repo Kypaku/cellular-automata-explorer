@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import CellularAutomatonExplorer from './components/CellularAutomatonExplorer.vue'
 import { useTheme } from './composables/useTheme'
+import { storageWarning, dismissStorageWarning } from './composables/useStorageWarning'
 
 const { theme, toggleTheme } = useTheme()
 </script>
 
 <template>
   <main class="app-shell">
+    <div v-if="storageWarning" class="app-storage-warning" role="alert">
+      <span>{{ storageWarning }}</span>
+      <button type="button" class="app-storage-warning-close" aria-label="Dismiss warning" @click="dismissStorageWarning">
+        ✕
+      </button>
+    </div>
     <div class="app-topbar">
       <h1>Cellular Automaton Simulator</h1>
       <div class="app-topbar-actions">
@@ -213,5 +220,29 @@ const { theme, toggleTheme } = useTheme()
 .icon-btn svg {
   width: 22px;
   height: 22px;
+}
+.app-storage-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 1rem;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #c0392b;
+  background: rgba(192, 57, 43, 0.12);
+  color: #c0392b;
+  font-weight: 600;
+  font-size: 0.9em;
+}
+.app-storage-warning-close {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1em;
+  line-height: 1;
+  padding: 2px 4px;
 }
 </style>
