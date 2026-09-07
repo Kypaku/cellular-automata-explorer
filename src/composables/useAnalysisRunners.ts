@@ -11,7 +11,7 @@ import type {
   RuleSnapshot,
   SubAnalyzeOptions,
 } from '../types/ca'
-import { AGENT_EVOLUTION_TAG, AGENT_TAG, ALL_STATES_TAG, CHAOS_TAG, CHAOS2_TAG, CUSTOM_SEARCH_TAG, FIELDS_TAG, GLIDERS_TAG, LARGE_STRUCTURES_TAG, LINES_TAG } from '../constants/ca'
+import { AGENT_EVOLUTION_TAG, AGENT_TAG, AGENT_TREE_TAG, ALL_STATES_TAG, CHAOS_TAG, CHAOS2_TAG, CUSTOM_SEARCH_TAG, FIELDS_TAG, GLIDERS_TAG, LARGE_STRUCTURES_TAG, LINES_TAG } from '../constants/ca'
 import { partsFromSnapshot } from '../utils/caMath'
 import { snapshotToGenome } from '../utils/analysis/evolution'
 import type { useRuleTags } from './useRuleTags'
@@ -25,6 +25,7 @@ import type { useRuleChaos2Analysis } from './useRuleChaos2Analysis'
 import type { useRuleAllStatesAnalysis } from './useRuleAllStatesAnalysis'
 import type { useRuleAgentAnalysis } from './useRuleAgentAnalysis'
 import type { useAgentEvolution } from './useAgentEvolution'
+import type { useAgentTreeSearch } from './useAgentTreeSearch'
 import type { useRuleSubAnalysis } from './useRuleSubAnalysis'
 
 export interface AnalysisRunnersDeps {
@@ -47,6 +48,7 @@ export interface AnalysisRunnersDeps {
   allStates: ReturnType<typeof useRuleAllStatesAnalysis>
   agent: ReturnType<typeof useRuleAgentAnalysis>
   agentEvolution: ReturnType<typeof useAgentEvolution>
+  agentTree: ReturnType<typeof useAgentTreeSearch>
   sub: ReturnType<typeof useRuleSubAnalysis>
 }
 
@@ -260,11 +262,31 @@ interface RunAgentEvolutionPayload {
   seedCurrent: boolean
 }
 
+interface RunAgentTreePayload {
+  width: number
+  height: number
+  maxHeight: number
+  heightGrowth: number
+  survivorPercent: number
+  init: AnalysisInitMode
+  memorySize: number
+  sequenceLength: number
+  health: number
+  stagnantRepeats: number
+  branching: number
+  mutationRate: number
+  frozenPenalty: number
+  maxDepth: number
+  maxRules: number
+  restart: boolean
+  maxRoots: number
+  seedCurrent: boolean
+}
+
 interface TagBestPayload {
   targetTag: string
   count: number
 }
-
 interface RunSubAnalysisPayload {
   sourceMode: AnalysisSourceMode
   from: number
@@ -284,7 +306,7 @@ interface RunSubAnalysisPayload {
  * "select rule" from the sub-analysis results list back into the rule editor.
  */
 export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
-  const { stateCount, mode, neighborhood, depth, collisionMode, collisionFixed, applyRuleSnapshot, captureRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, chaos2, allStates, agent, agentEvolution, sub } = deps
+  const { stateCount, mode, neighborhood, depth, collisionMode, collisionFixed, applyRuleSnapshot, captureRuleSnapshot, tags, analysis, fields, gliders, customSearch, lines, chaos, chaos2, allStates, agent, agentEvolution, agentTree, sub } = deps
 
   /** Resolves the union of saved rules carrying any of the given tags into
    * classifier-ready inputs (parts + snapshot + display name). */
@@ -731,6 +753,67 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     }
   }
 
+  const treeTracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, AGENT_TREE_TAG)
+
+  /**
+   * Tree search: the same agent-survival score as the evolutionary hunt, but the
+   * rule space is walked as a tree of single mutations (see `useAgentTreeSearch`).
+   * Nothing is tagged automatically — the user picks how many of the best rules
+   * to tag once a run looks promising.
+   */
+  function onRunAgentTree(payload: RunAgentTreePayload): void {
+    const genomeContext = {
+      stateCount: stateCount.value,
+      mode: mode.value,
+      neighborhood: neighborhood.value,
+      depth: depth.value,
+      collisionMode: collisionMode.value,
+      collisionFixed: collisionFixed.value,
+    }
+    agentTree.start({
+      ...genomeContext,
+      width: payload.width,
+      init: payload.init,
+      height: payload.height,
+      maxHeight: payload.maxHeight,
+      heightGrowth: payload.heightGrowth,
+      survivorPercent: payload.survivorPercent,
+      memorySize: payload.memorySize,
+      sequenceLength: payload.sequenceLength,
+      health: payload.health,
+      stagnantRepeats: payload.stagnantRepeats,
+      branching: payload.branching,
+      mutationRate: payload.mutationRate,
+      frozenPenalty: payload.frozenPenalty,
+      maxDepth: payload.maxDepth,
+      maxRules: payload.maxRules,
+      restart: payload.restart,
+      maxRoots: payload.maxRoots,
+      seedGenome: payload.seedCurrent ? snapshotToGenome(captureRuleSnapshot(), genomeContext) : undefined,
+    })
+  }
+
+  /** Tags the best `count` rules the tree search has found with the chosen tag. */
+  function onTagTreeBest({ targetTag, count }: TagBestPayload): void {
+    const tag = String(targetTag || '').trim() || AGENT_TREE_TAG
+    treeTracker.reset()
+    const apply = treeTracker.apply(tag)
+    for (const row of agentTree.rows.slice(0, Math.max(1, Math.floor(count)))) {
+      apply(true, row.parts, row.snapshot)
+    }
+  }
+
+  /** Saves the full traversal log (every rule tested, every step of the walk). */
+  function onDownloadTreeLog(): void {
+    const blob = new Blob([agentTree.buildLogText()], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `ca-tree-search-log-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   const subTracker = useFoundRulesTracker(tags.applyOrthogonalTag, tags.clearTag, LARGE_STRUCTURES_TAG)
   function onRunSubAnalysis({
     sourceMode,
@@ -807,6 +890,12 @@ export function useAnalysisRunners(deps: AnalysisRunnersDeps) {
     onUndoEvolutionFound: evolutionTracker.undo,
     onClearEvolutionTag: evolutionTracker.clear,
     evolutionFoundRules: evolutionTracker.foundRules,
+    onRunAgentTree,
+    onTagTreeBest,
+    onDownloadTreeLog,
+    onUndoTreeFound: treeTracker.undo,
+    onClearTreeTag: treeTracker.clear,
+    treeFoundRules: treeTracker.foundRules,
     onRunSubAnalysis,
     onUndoSubFound: subTracker.undo,
     onClearSubTag: subTracker.clear,

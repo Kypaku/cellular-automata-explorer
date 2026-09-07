@@ -13,6 +13,8 @@ import { useRuleChaos2Analysis } from '../composables/useRuleChaos2Analysis'
 import { useRuleAllStatesAnalysis } from '../composables/useRuleAllStatesAnalysis'
 import { useRuleAgentAnalysis } from '../composables/useRuleAgentAnalysis'
 import { useAgentEvolution } from '../composables/useAgentEvolution'
+import { useAgentTreeSearch } from '../composables/useAgentTreeSearch'
+import type { TreeLogEntry } from '../composables/useAgentTreeSearch'
 import { useRuleSubAnalysis } from '../composables/useRuleSubAnalysis'
 import { useTagInteractions } from '../composables/useTagInteractions'
 import { useAnalysisRunners } from '../composables/useAnalysisRunners'
@@ -32,6 +34,7 @@ import Chaos2AnalysisPanel from './ca/Chaos2AnalysisPanel.vue'
 import AllStatesAnalysisPanel from './ca/AllStatesAnalysisPanel.vue'
 import AgentAnalysisPanel from './ca/AgentAnalysisPanel.vue'
 import AgentEvolutionPanel from './ca/AgentEvolutionPanel.vue'
+import AgentTreeSearchPanel from './ca/AgentTreeSearchPanel.vue'
 import SubAnalysisPanel from './ca/SubAnalysisPanel.vue'
 
 const ca = useCellularAutomaton()
@@ -158,6 +161,37 @@ const {
   rows: evolutionRows,
   stop: stopAgentEvolution,
 } = evolutionApi
+
+const treeApi = useAgentTreeSearch()
+const {
+  running: treeRunning,
+  progress: treeProgress,
+  evaluations: treeEvaluations,
+  uniqueRules: treeUniqueRules,
+  ruleBudget: treeBudget,
+  height: treeHeight,
+  calibrations: treeCalibrations,
+  currentDepth: treeDepth,
+  deepestDepth: treeDeepestDepth,
+  rootCount: treeRoots,
+  backtracks: treeBacktracks,
+  exhausted: treeExhausted,
+  bestFitness: treeBestFitness,
+  bestReason: treeBestReason,
+  rows: treeRows,
+  logSize: treeLogSize,
+  logEntries: treeLog,
+  snapshotForGenome: treeSnapshotForGenome,
+  stop: stopAgentTree,
+} = treeApi
+
+/** Opens the rule of a log line in the editor. */
+function onOpenTreeLogEntry(entry: TreeLogEntry): void {
+  const snapshot = treeSnapshotForGenome(entry.genome, entry.height)
+  if (snapshot) {
+    applyRuleSnapshot(snapshot)
+  }
+}
 
 const subApi = useRuleSubAnalysis()
 const { running: subRunning, done: subDone, total: subTotal, progress: subProgress, currentName: subCurrentName, found: subFound, results: subResults, stop: stopSubAnalysis } = subApi
@@ -318,6 +352,12 @@ const {
   onUndoEvolutionFound,
   onClearEvolutionTag,
   evolutionFoundRules,
+  onRunAgentTree,
+  onTagTreeBest,
+  onDownloadTreeLog,
+  onUndoTreeFound,
+  onClearTreeTag,
+  treeFoundRules,
   onRunSubAnalysis,
   onUndoSubFound,
   onClearSubTag,
@@ -343,6 +383,7 @@ const {
   allStates: allStatesApi,
   agent: agentApi,
   agentEvolution: evolutionApi,
+  agentTree: treeApi,
   sub: subApi,
 })
 </script>
@@ -712,6 +753,43 @@ const {
         @undo-found="onUndoEvolutionFound"
         @clear-tag="onClearEvolutionTag"
         @select-rule="applyRuleSnapshot"
+      />
+    </div>
+
+    <div class="ca-row">
+      <AgentTreeSearchPanel
+        :state-count="stateCount"
+        :mode="mode"
+        :neighborhood="neighborhood"
+        :depth="depth"
+        :running="treeRunning"
+        :progress="treeProgress"
+        :evaluations="treeEvaluations"
+        :unique-rules="treeUniqueRules"
+        :rule-budget="treeBudget"
+        :current-height="treeHeight"
+        :calibrations="treeCalibrations"
+        :current-depth="treeDepth"
+        :deepest-depth="treeDeepestDepth"
+        :root-count="treeRoots"
+        :backtracks="treeBacktracks"
+        :exhausted="treeExhausted"
+        :best-fitness="treeBestFitness"
+        :best-reason="treeBestReason"
+        :rows="treeRows"
+        :log-size="treeLogSize"
+        :log="treeLog"
+        :can-undo-found="treeFoundRules.length > 0"
+        :found-count="treeFoundRules.length"
+        :tags="tags"
+        :tag-counts="tagCounts"
+        @run="onRunAgentTree"
+        @stop="stopAgentTree"
+        @tag-best="onTagTreeBest"
+        @download-log="onDownloadTreeLog"
+        @undo-found="onUndoTreeFound"
+        @clear-tag="onClearTreeTag"
+        @select-entry="onOpenTreeLogEntry"
       />
     </div>
 

@@ -118,8 +118,8 @@ function clampFloat(value: number, min: number, max: number, fallback: number): 
 }
 
 function onRun(): void {
-  width.value = clampInt(width.value, 16, 1000, AGENT_EVOLUTION_DEFAULTS.width)
-  height.value = clampInt(height.value, 10, 20000, AGENT_EVOLUTION_DEFAULTS.height)
+  width.value = clampInt(width.value, 16, 999999999999999, AGENT_EVOLUTION_DEFAULTS.width)
+  height.value = clampInt(height.value, 10, 99999999999, AGENT_EVOLUTION_DEFAULTS.height)
   maxHeight.value = clampInt(maxHeight.value, height.value, 100000, AGENT_EVOLUTION_DEFAULTS.maxHeight)
   heightGrowth.value = clampFloat(heightGrowth.value, 1, 10, AGENT_EVOLUTION_DEFAULTS.heightGrowth)
   survivorPercent.value = clampInt(survivorPercent.value, 1, 100, AGENT_EVOLUTION_DEFAULTS.survivorPercent)

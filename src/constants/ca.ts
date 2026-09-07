@@ -117,6 +117,11 @@ export const AGENT_TAG = 'AgentSurvives'
 // stays alive as long as possible before dying.
 export const AGENT_EVOLUTION_TAG = 'AgentHunted'
 
+// Extra, non-exclusive tag applied to the best rules found by the tree search:
+// the same selection rule as the evolutionary hunt, reached by descending a tree
+// of single mutations instead of breeding a population.
+export const AGENT_TREE_TAG = 'AgentTracked'
+
 // Sentinel cell value inside a CustomPattern meaning "match any state value".
 export const CUSTOM_ANY = -1
 
@@ -244,6 +249,9 @@ export const CUSTOM_SEARCH_DEFAULTS = {
 // localStorage key under which the custom-search template set is persisted.
 export const CUSTOM_SEARCH_STORAGE_KEY = 'ca-custom-search-patterns'
 
+// localStorage key under which the legend's complex conditions are persisted.
+export const COMPLEX_CONDITIONS_STORAGE_KEY = 'ca-complex-conditions'
+
 // Default parameters for the standalone "absence of lines" test (run separately
 // from the class analysis, since its tag is orthogonal). The top `cutTop`% of the
 // W×H diagram (transient) is discarded; the rest is reduced to an M×M pattern map
@@ -346,6 +354,32 @@ export const AGENT_EVOLUTION_DEFAULTS = {
   crossoverRate: 70, // % of children produced by crossing two parents
   tournamentSize: 3, // candidates competing for each parent slot
   frozenPenalty: 10, // % of the score kept by a frozen rule
+  tagCount: 10, // how many of the best rules the "tag best" button tags
+}
+
+// Default parameters for the TREE search driven by the agent-survival test. It
+// starts from a random (or the current) rule, spawns `branching` children that
+// each carry their own unique mutation, scores them with the same rule as the
+// evolutionary hunt (the agent must die, as late as possible, without the rule
+// freezing) and walks down into the best usable child. A branch whose children
+// all survive or freeze is abandoned and the search falls back to the next best
+// sibling; once the walk is back at the root it either stops or (when `restart`
+// is on) starts over from another random rule, up to `maxRoots` of them. No rule
+// is ever tested twice.
+export const AGENT_TREE_DEFAULTS = {
+  width: 201, // W of the evolved generation
+  height: 200, // starting H, raised automatically while calibrating
+  maxHeight: 5000, // H is never raised past this
+  heightGrowth: 2, // multiplier applied to H when calibrating
+  survivorPercent: 50, // % of one child set that must survive H to trigger a raise
+  init: 'random' as 'random' | 'single', // 'random' | 'single'
+  branching: 8, // N: children spawned from every node
+  mutationRate: 5, // % of genes redrawn in a child
+  frozenPenalty: 10, // % of the score kept by a frozen rule
+  maxDepth: 500, // deepest branch the walk may reach
+  maxRules: 5000, // total budget of rules a run may test
+  restart: true, // start over from a new random rule once a tree is used up
+  maxRoots: 20, // how many random starting rules one run may use
   tagCount: 10, // how many of the best rules the "tag best" button tags
 }
 

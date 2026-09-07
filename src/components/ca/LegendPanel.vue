@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { LegendItem } from '../../types/ca'
+import { useComplexConditions } from '../../composables/useComplexConditions'
 import { padRight, stateChar, stateDigitFromCharCode } from '../../utils/caMath'
+import ComplexConditionsPanel from './ComplexConditionsPanel.vue'
 import RuleJsonPanel from './RuleJsonPanel.vue'
 
 const props = defineProps<{
@@ -24,6 +26,21 @@ const emit = defineEmits<{
 }>()
 
 const COLLAPSE_THRESHOLD = 30
+
+const complexApi = useComplexConditions({
+  stateCount: () => props.stateCount,
+  neighborhood: () => props.neighborhood,
+  depth: () => props.depth,
+  localRule: () => props.ruleInputValue,
+  stochasticOptions: () => props.stochasticOptions,
+  apply: (payload) => emit('apply-rule-json', payload),
+})
+const {
+  conditions: complexConditions,
+  supported: complexSupported,
+  toggleCondition: toggleComplexCondition,
+  beginEdit: editComplexCondition,
+} = complexApi
 
 const collapsed = ref(true)
 const searchExpanded = ref(false)
@@ -254,6 +271,15 @@ function conditionCaption(item: LegendItem, index: number): string {
         <div class="ca-cap">{{ conditionCaption(item, index) }}</div>
       </div>
       <div v-if="isSearching && filteredIndexedItems.length === 0" class="ca-meter">No matching conditions.</div>
+      <template v-if="mode !== 'descendants' && complexSupported">
+        <div v-for="condition in complexConditions" :key="condition.id" class="ca-complex-chip">
+          <label class="ca-complex-check">
+            <input type="checkbox" :checked="condition.enabled" @change="toggleComplexCondition(condition)" />
+            <span class="ca-complex-name">{{ condition.name }}</span>
+          </label>
+          <button type="button" class="ca-link-btn" @click="editComplexCondition(condition)">edit</button>
+        </div>
+      </template>
     </div>
     <RuleJsonPanel
       v-if="mode !== 'descendants'"
@@ -263,6 +289,13 @@ function conditionCaption(item: LegendItem, index: number): string {
       :local-rule="ruleInputValue"
       :stochastic-options="stochasticOptions"
       @apply="emit('apply-rule-json', $event)"
+    />
+    <ComplexConditionsPanel
+      v-if="mode !== 'descendants'"
+      :api="complexApi"
+      :state-count="stateCount"
+      :neighborhood="neighborhood"
+      :depth="depth"
     />
     <button v-if="showToggle" type="button" class="ca-legend-toggle" @click="collapsed = !collapsed">
       {{ collapsed ? `Show all (${filteredIndexedItems.length})` : 'Collapse' }}

@@ -165,7 +165,6 @@ function onUndoFound(): void {
       :tags="tags"
       :tag-counts="tagCounts"
       :rules="rules"
-      :width-max="1000"
       :height-max="20000"
       :initial-width="AGENT_DEFAULTS.width"
       :initial-height="AGENT_DEFAULTS.height"

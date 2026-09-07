@@ -124,6 +124,44 @@ export function jitterGenome(genome: string, ctx: RuleGenomeContext, count: numb
   return genes.join('')
 }
 
+/** How many times a mutation is retried before a genome is declared a dead end. */
+const MUTATION_ATTEMPTS = 64
+
+/** Extra knobs of {@link mutateNovelGenome}. */
+export interface NovelMutationOptions {
+  /** True for every genome that must not be produced again (already tested). */
+  isTaken?: (genome: string) => boolean
+  rand?: () => number
+}
+
+/**
+ * Mutates `genome` into a child that is BOTH different from its parent and new
+ * to the search. Each failed attempt pushes the child further away (more forced
+ * gene flips), so a crowded neighbourhood is escaped instead of re-drawn. Returns
+ * `null` when no unseen mutation could be produced — the genome is a dead end.
+ */
+export function mutateNovelGenome(
+  genome: string,
+  ctx: RuleGenomeContext,
+  rate: number,
+  options: NovelMutationOptions = {}
+): string | null {
+  const rand = options.rand || Math.random
+  const isTaken = options.isTaken || (() => false)
+  const acceptable = (child: string): boolean => child !== genome && !isTaken(child)
+  for (let attempt = 0; attempt < MUTATION_ATTEMPTS; attempt++) {
+    const child = mutateGenome(genome, ctx, rate, rand)
+    if (acceptable(child)) {
+      return child
+    }
+    const nudged = jitterGenome(child, ctx, 1 + Math.floor(attempt / 8), rand)
+    if (acceptable(nudged)) {
+      return nudged
+    }
+  }
+  return null
+}
+
 /** Uniform crossover: every gene is taken from either parent with equal odds. */
 export function crossoverGenomes(a: string, b: string, rand: () => number = Math.random): string {
   const length = Math.min(a.length, b.length)

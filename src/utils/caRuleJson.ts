@@ -57,6 +57,22 @@ export interface RuleJsonBuildResult {
   supported: boolean
 }
 
+export interface RuleJsonPatchResult {
+  /**
+   * Template index (as a string key) → the state digits it produces (one digit
+   * for a deterministic template, several for a random one), or null when
+   * parsing failed. Unlike {@link RuleJsonParseResult} this only lists the
+   * templates the text mentions, so it can be laid over an existing rule.
+   */
+  assignments: Record<string, string> | null
+  /** Human readable reason why parsing failed, or null on success. */
+  error: string | null
+  /** How many entries the text contained. */
+  entries: number
+  /** How many templates the entries covered (wildcards expand to many). */
+  covered: number
+}
+
 export interface RuleJsonParseResult {
   /** The resulting local rule string, or null when parsing failed. */
   rule: string | null
@@ -86,6 +102,19 @@ export function formatRulePattern(index: number, config: CaConfig): string {
     groups.push(raw.slice(row * config.neighborhood, (row + 1) * config.neighborhood))
   }
   return groups.join(RULE_JSON_ROW_SEPARATOR)
+}
+
+/** Mirrors a template index left to right: every row of cells is reversed, the row order is kept. */
+export function mirrorTemplateIndex(index: number, config: CaConfig): number {
+  const raw = toBaseN(index, config.taps, config.states)
+  let mirrored = 0
+  for (let row = 0; row < config.depth; row++) {
+    const start = row * config.neighborhood
+    for (let cell = config.neighborhood - 1; cell >= 0; cell--) {
+      mirrored = mirrored * config.states + stateDigitFromCharCode(raw.charCodeAt(start + cell))
+    }
+  }
+  return mirrored
 }
 
 /** Removes `//` and block comments, leaving quoted strings untouched. */
@@ -204,11 +233,72 @@ export function parseRuleJson(
     return { rule: null, options: {}, error: 'This rule table is too large to be edited as JSON.', entries: 0, covered: 0 }
   }
 
-  const body = stripComments(String(text || ''))
+  const parsed = parseRuleEntries(text, config)
+  if (!parsed.assignments) {
+    return { rule: null, options: {}, error: parsed.error, entries: parsed.entries, covered: parsed.covered }
+  }
+
   const digits = new Uint8Array(config.localDigits)
   const options: Record<string, string> = {}
+  for (const [index, picks] of parsed.assignments) {
+    // The rule string keeps the first option, so every consumer that ignores
+    // the random choices (analysis, tags, PNG export) still sees a valid rule.
+    digits[index] = stateDigitFromCharCode(picks.charCodeAt(0))
+    if (picks.length > 1) {
+      options[String(index)] = picks
+    }
+  }
+
+  let rule = ''
+  for (let index = 0; index < config.localDigits; index++) {
+    rule += stateChar(digits[index])
+  }
+  return { rule, options, error: null, entries: parsed.entries, covered: parsed.covered }
+}
+
+/**
+ * Same format as {@link parseRuleJson}, but returns only the templates the text
+ * mentions instead of a full rule. Used to switch a group of templates on and
+ * off on top of whatever rule is currently loaded.
+ */
+export function parseRuleJsonPatch(
+  text: string,
+  states: number,
+  neighborhood: number = 3,
+  depth: number = 1
+): RuleJsonPatchResult {
+  const config = getConfig(states, neighborhood, depth)
+  if (!canMaterializeLocal(config)) {
+    return { assignments: null, error: 'This rule table is too large to be edited as JSON.', entries: 0, covered: 0 }
+  }
+
+  const parsed = parseRuleEntries(text, config)
+  if (!parsed.assignments) {
+    return { assignments: null, error: parsed.error, entries: parsed.entries, covered: parsed.covered }
+  }
+
+  const assignments: Record<string, string> = {}
+  for (const [index, picks] of parsed.assignments) {
+    assignments[String(index)] = picks
+  }
+  return { assignments, error: null, entries: parsed.entries, covered: parsed.covered }
+}
+
+interface RuleEntriesResult {
+  /** Template index → the state digits it produces, or null when parsing failed. */
+  assignments: Map<number, string> | null
+  error: string | null
+  entries: number
+  covered: number
+}
+
+function parseRuleEntries(text: string, config: CaConfig): RuleEntriesResult {
+  const body = stripComments(String(text || ''))
+  const assignments = new Map<number, string>()
   let entries = 0
   let covered = 0
+
+  const fail = (error: string): RuleEntriesResult => ({ assignments: null, error, entries, covered })
 
   PAIR_PATTERN.lastIndex = 0
   let match: RegExpExecArray | null
@@ -218,13 +308,9 @@ export function parseRuleJson(
     const key = rawKey.split(RULE_JSON_ROW_SEPARATOR).join('').trim()
 
     if (key.length !== config.taps) {
-      return {
-        rule: null,
-        options: {},
-        error: `Pattern "${rawKey}" has ${key.length} cells, expected ${config.taps} (${config.neighborhood} cells x ${config.depth} row(s)).`,
-        entries,
-        covered,
-      }
+      return fail(
+        `Pattern "${rawKey}" has ${key.length} cells, expected ${config.taps} (${config.neighborhood} cells x ${config.depth} row(s)).`
+      )
     }
 
     // A bare digit is deterministic; a list is drawn from at random each time.
@@ -232,24 +318,12 @@ export function parseRuleJson(
     for (const choice of valueOptions(rawValue)) {
       const value = stateDigitFromCharCode(choice.charCodeAt(0))
       if (choice.length !== 1 || value < 0 || value >= config.states) {
-        return {
-          rule: null,
-          options: {},
-          error: `Value "${choice}" of pattern "${rawKey}" is not a state between 0 and ${config.maxDigit}.`,
-          entries,
-          covered,
-        }
+        return fail(`Value "${choice}" of pattern "${rawKey}" is not a state between 0 and ${config.maxDigit}.`)
       }
       picks += stateChar(value)
     }
     if (!picks) {
-      return {
-        rule: null,
-        options: {},
-        error: `Pattern "${rawKey}" lists no states.`,
-        entries,
-        covered,
-      }
+      return fail(`Pattern "${rawKey}" lists no states.`)
     }
 
     let base = 0
@@ -262,18 +336,13 @@ export function parseRuleJson(
       }
       const digit = stateDigitFromCharCode(key.charCodeAt(cell))
       if (digit < 0 || digit >= config.states) {
-        return {
-          rule: null,
-          options: {},
-          error: `Pattern "${rawKey}" contains "${key[cell]}", expected a state between 0 and ${config.maxDigit} or "${RULE_JSON_ANY}".`,
-          entries,
-          covered,
-        }
+        return fail(
+          `Pattern "${rawKey}" contains "${key[cell]}", expected a state between 0 and ${config.maxDigit} or "${RULE_JSON_ANY}".`
+        )
       }
       base += digit * weight
     }
 
-    const first = stateDigitFromCharCode(picks.charCodeAt(0))
     const combinations = Math.pow(config.states, wildcardWeights.length)
     for (let combo = 0; combo < combinations; combo++) {
       let index = base
@@ -282,32 +351,15 @@ export function parseRuleJson(
         index += (remaining % config.states) * wildcardWeights[w]
         remaining = Math.floor(remaining / config.states)
       }
-      // The rule string keeps the first option, so every consumer that ignores
-      // the random choices (analysis, tags, PNG export) still sees a valid rule.
-      digits[index] = first
-      if (picks.length > 1) {
-        options[String(index)] = picks
-      } else {
-        delete options[String(index)]
-      }
+      assignments.set(index, picks)
       covered++
     }
     entries++
   }
 
   if (entries === 0) {
-    return {
-      rule: null,
-      options: {},
-      error: 'No patterns found. Expected entries such as "110": 1 between { and }.',
-      entries: 0,
-      covered: 0,
-    }
+    return fail('No patterns found. Expected entries such as "110": 1 between { and }.')
   }
-
-  let rule = ''
-  for (let index = 0; index < config.localDigits; index++) {
-    rule += stateChar(digits[index])
-  }
-  return { rule, options, error: null, entries, covered }
+  return { assignments, error: null, entries, covered }
 }
+

@@ -342,6 +342,33 @@ html.dark .ca-wrap {
 .ca-probability-choice .ca-sq {
   flex: 0 0 auto;
 }
+.ca-complex {
+  margin-top: 8px;
+}
+.ca-complex-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 0.5px solid var(--ca-border);
+  border-radius: 8px;
+  background: var(--ca-chip-bg);
+  color: var(--ca-chip-text);
+}
+.ca-complex-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.ca-complex-name {
+  font: 500 12px/1.2 ui-monospace, monospace;
+}
+.ca-complex-name-input {
+  width: 220px;
+  max-width: 100%;
+}
 .ca-legend {
   display: flex;
   gap: 8px;
