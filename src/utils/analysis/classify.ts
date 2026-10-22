@@ -40,7 +40,7 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
   const evolver = createEvolver(parts, { width, init })
   let row = evolver.current
   let prevRow: Uint8Array | null = null
-  const seen = new Map<string, number>()
+  const seen = new Map<string, { y: number; draws: number }>()
   // The next row depends on the last `depth` rows, so a cycle is a repeat of
   // that whole window, not just of the newest row.
   const depth = evolver.depth
@@ -78,16 +78,19 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
     rowKeys.push(String.fromCharCode.apply(null, Array.from(row)))
     if (rowKeys.length > depth) rowKeys.shift()
     // The first depth-1 windows include hidden pre-history rows: skip them.
-    // With random collisions the PRNG state (not exposed, not in the key) also
-    // drives the step, so a repeated window proves nothing: no cycle detection,
-    // the rule falls through to the statistics below.
-    const key = !evolver.stochastic && rowKeys.length === depth ? (depth === 1 ? rowKeys[0] : rowKeys.join('|')) : ''
-    if (key !== '' && seen.has(key)) {
-      const period = y - (seen.get(key) as number)
-      const tag = period === 1 ? ANALYSIS_TAGS.FIXED : ANALYSIS_TAGS.PERIODIC
-      return makeResult(tag, { reason: 'cycle', generation: y, period, density: live, flux: fluxes[y] })
+    // With random collisions the hidden PRNG state also drives the step, so a
+    // repeated window is a cycle only if no random number was drawn since its
+    // first occurrence (then the collisions in it are all deterministic).
+    const key = rowKeys.length === depth ? (depth === 1 ? rowKeys[0] : rowKeys.join('|')) : ''
+    if (key !== '') {
+      const first = seen.get(key)
+      if (first && (!evolver.stochastic || first.draws === evolver.draws)) {
+        const period = y - first.y
+        const tag = period === 1 ? ANALYSIS_TAGS.FIXED : ANALYSIS_TAGS.PERIODIC
+        return makeResult(tag, { reason: 'cycle', generation: y, period, density: live, flux: fluxes[y] })
+      }
+      seen.set(key, { y, draws: evolver.draws })
     }
-    if (key !== '') seen.set(key, y)
 
     prevRow = row
     row = evolver.step()

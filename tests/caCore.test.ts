@@ -209,12 +209,28 @@ describe('classification (classify)', () => {
     expect(classifyRule({ ...parts, emissionRule: '010' }, opts).tag).toBe('Fixed') // each cell copies itself down
   })
 
-  it('random-collision descendants never claim an exact cycle (the PRNG state is hidden)', () => {
+  it('random-collision descendants claim a cycle only when no random number was drawn in it', () => {
     const opts = { width: 24, height: 80, init: 'random' } as const
-    for (const emissionRule of ['000012', '000020', '000102']) {
-      const base: RuleParts = { stateCount: 3, mode: 'descendants', code: 0, localRule: '', emissionRule }
-      expect(classifyRule({ ...base, collisionMode: 'random' }, opts).stats.reason).not.toBe('cycle')
-      expect(createEvolver({ ...base, collisionMode: 'sum' }, { width: 8, init: 'random' }).stochastic).toBe(false)
+    const base = (emissionRule: string, collisionMode: 'sum' | 'random'): RuleParts => ({
+      stateCount: 3,
+      mode: 'descendants',
+      code: 0,
+      localRule: '',
+      emissionRule,
+      collisionMode,
+      collisionFixed: 1,
+    })
+    // Collision-free after the transient: the repeat is a real cycle even with random collisions.
+    expect(classifyRule(base('000020', 'random'), opts)).toMatchObject({ tag: 'Fixed', stats: { reason: 'cycle' } })
+    expect(classifyRule(base('000102', 'random'), opts)).toMatchObject({ tag: 'Periodic', stats: { reason: 'cycle', period: 24 } })
+    // Keeps colliding at random (draws grow): no exact-cycle claim (was a false Fixed).
+    const noisy = classifyRule({ ...base('211020', 'random') }, { width: 48, height: 96, init: 'random' })
+    expect(noisy.stats.reason).not.toBe('cycle')
+    const ev = createEvolver(base('211020', 'random'), { width: 48, init: 'random' })
+    for (let i = 0; i < 20; i++) ev.step()
+    expect(ev.draws).toBeGreaterThan(0)
+    for (const e of ['000012', '000020', '000102']) {
+      expect(createEvolver(base(e, 'sum'), { width: 8, init: 'random' }).stochastic).toBe(false)
     }
     expect(classifyRule({ stateCount: 3, mode: 'descendants', code: 0, localRule: '', emissionRule: '000020', collisionMode: 'sum' }, opts).stats.reason).toBe('cycle')
   })

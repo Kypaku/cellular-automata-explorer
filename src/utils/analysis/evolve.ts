@@ -31,6 +31,12 @@ export interface Evolver {
    * collisions). Then a repeated row window does not prove a cycle.
    */
   stochastic: boolean
+  /**
+   * How many random numbers the collision rule has drawn so far. Equal values
+   * at two moments mean no random choice was made in between, so a repeated
+   * window is still a proof of a cycle even when {@link Evolver.stochastic}.
+   */
+  draws: number
   /** The newest row of the diagram (replaced by every {@link Evolver.step}). */
   current: Uint8Array
   /** Computes the next generation, advances the history window and returns it. */
@@ -87,6 +93,7 @@ export function createEvolver(parts: RuleParts, options: EvolverOptions): Evolve
     width,
     depth,
     stochastic: parts.mode === 'descendants' && collisionMode === 'random',
+    draws: 0,
     current: row,
     step(): Uint8Array {
       const cur = window[window.length - 1]
@@ -119,7 +126,10 @@ export function createEvolver(parts: RuleParts, options: EvolverOptions): Evolve
           const a = left === 0 ? 0 : em[(left - 1) * 3 + 2]
           const b = center === 0 ? 0 : em[(center - 1) * 3 + 1]
           const c = right === 0 ? 0 : em[(right - 1) * 3 + 0]
-          next[k] = resolveCollision(a, b, c, states, collisionMode, collisionFixed, rand)
+          next[k] = resolveCollision(a, b, c, states, collisionMode, collisionFixed, () => {
+            evolver.draws++
+            return rand()
+          })
         }
       }
       window.push(next)
