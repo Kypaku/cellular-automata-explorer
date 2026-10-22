@@ -41,6 +41,10 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
   let row = evolver.current
   let prevRow: Uint8Array | null = null
   const seen = new Map<string, number>()
+  // The next row depends on the last `depth` rows, so a cycle is a repeat of
+  // that whole window, not just of the newest row.
+  const depth = evolver.depth
+  const rowKeys: string[] = []
   const densities = new Array<number>(height)
   const fluxes = new Array<number>(height)
 
@@ -71,13 +75,16 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
       return makeResult(ANALYSIS_TAGS.DEAD, { reason: 'uniform', generation: y, period: 0, density: live, flux: 0 })
     }
 
-    const key = String.fromCharCode.apply(null, Array.from(row))
-    if (seen.has(key)) {
+    rowKeys.push(String.fromCharCode.apply(null, Array.from(row)))
+    if (rowKeys.length > depth) rowKeys.shift()
+    // The first depth-1 windows include hidden pre-history rows: skip them.
+    const key = rowKeys.length === depth ? (depth === 1 ? rowKeys[0] : rowKeys.join('|')) : ''
+    if (key !== '' && seen.has(key)) {
       const period = y - (seen.get(key) as number)
       const tag = period === 1 ? ANALYSIS_TAGS.FIXED : ANALYSIS_TAGS.PERIODIC
       return makeResult(tag, { reason: 'cycle', generation: y, period, density: live, flux: fluxes[y] })
     }
-    seen.set(key, y)
+    if (key !== '') seen.set(key, y)
 
     prevRow = row
     row = evolver.step()

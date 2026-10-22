@@ -24,6 +24,8 @@ export interface Evolver {
   states: number
   /** Row width in cells. */
   width: number
+  /** Normalized depth: how many of the latest rows determine the next one. */
+  depth: number
   /** The newest row of the diagram (replaced by every {@link Evolver.step}). */
   current: Uint8Array
   /** Computes the next generation, advances the history window and returns it. */
@@ -78,6 +80,7 @@ export function createEvolver(parts: RuleParts, options: EvolverOptions): Evolve
   const evolver: Evolver = {
     states,
     width,
+    depth,
     current: row,
     step(): Uint8Array {
       const cur = window[window.length - 1]

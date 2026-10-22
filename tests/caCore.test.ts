@@ -169,6 +169,14 @@ describe('evolution step (evolve)', () => {
 })
 
 describe('classification (classify)', () => {
+  it('detects cycles over the whole depth window, not just the last row (depth 2)', () => {
+    // Depth-2 rules: a repeated last row is no cycle unless the row before it repeats too.
+    const o = { width: 32, height: 64 }
+    expect(classifyRule(totalistic(122, 2, 3, 2), { ...o, init: 'single' }).tag).not.toBe('Fixed') // was a false Fixed
+    const res = classifyRule(totalistic(24, 2, 3, 2), { ...o, init: 'random' })
+    expect(res.tag).toBe('Periodic') // was a false Fixed (period 1)
+    expect(res.stats.period).toBeGreaterThan(1)
+  })
   const opts = { width: 64, height: 96, init: 'single' as const }
 
   it('Dead: rule 0 dies out, an all-ones rule turns uniform', () => {
