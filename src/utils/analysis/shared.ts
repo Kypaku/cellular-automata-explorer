@@ -4,6 +4,7 @@ import type { AnalysisInitMode, CollisionMode, RuleMode, RuleParts, RuleSnapshot
 import {
   codeToLocalRule,
   codeToEmissionRule,
+  sanitizeEmissionRule,
   buildLocalRuleFromTotalistic,
   clampCollisionFixed,
   DEFAULT_COLLISION_MODE,
@@ -52,7 +53,8 @@ export function buildInitialRow(
 /**
  * A single candidate rule for a batch scan. `code` is the sequential/random
  * index the scan walks; the optional overrides let a caller supply a rule
- * string directly (used for large local spaces sampled as digit strings). For
+ * string directly (used for code spaces too large for doubles, sampled as digit
+ * strings: the local table, or in descendants mode the emission rule). For
  * descendants mode `collisionMode`/`collisionFixed` carry the user's selected
  * collision strategy, held fixed while the emission rule is what varies.
  */
@@ -60,6 +62,7 @@ export interface RuleDescriptor {
   stateCount: number
   mode: RuleMode
   code: number
+  /** Rule digit string overriding `code`: local table, or the emission rule in descendants mode. */
   localRule?: string
   /** Totalistic/local mode: cells read from the previous row (3, 5 or 7; default 3). */
   neighborhood?: number
@@ -77,7 +80,7 @@ export function buildAnalysisParts(d: RuleDescriptor): RuleParts {
       mode: 'descendants',
       code: 0,
       localRule: '',
-      emissionRule: codeToEmissionRule(d.code, d.stateCount),
+      emissionRule: d.localRule ? sanitizeEmissionRule(d.localRule, d.stateCount) : codeToEmissionRule(d.code, d.stateCount),
       collisionMode: d.collisionMode || DEFAULT_COLLISION_MODE,
       collisionFixed: clampCollisionFixed(d.collisionFixed ?? DEFAULT_COLLISION_FIXED, d.stateCount),
     }
@@ -105,7 +108,7 @@ export function buildAnalysisSnapshot(d: RuleDescriptor, init: AnalysisInitMode,
       mode: 'descendants',
       code: 0,
       localRule: '',
-      emissionRule: codeToEmissionRule(d.code, d.stateCount),
+      emissionRule: d.localRule ? sanitizeEmissionRule(d.localRule, d.stateCount) : codeToEmissionRule(d.code, d.stateCount),
       collisionMode: d.collisionMode || DEFAULT_COLLISION_MODE,
       collisionFixed: clampCollisionFixed(d.collisionFixed ?? DEFAULT_COLLISION_FIXED, d.stateCount),
       init: normInit,

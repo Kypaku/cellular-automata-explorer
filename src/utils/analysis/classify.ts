@@ -1,5 +1,6 @@
 // Pure, framework-agnostic classifier for one-dimensional cellular-automaton
-// rules. Given a rule (totalistic code or explicit local rule) it evolves a
+// rules. Given a rule (totalistic code, explicit local rule or descendants
+// emission rule) it evolves a
 // W-wide row for up to H generations and assigns the rule one of the classes
 // defined in constants/ca.ts (ANALYSIS_TAGS).
 //
@@ -12,9 +13,8 @@
 //   Complex  -> class 4 (sparse localized persistent structures)
 //   Undefined-> nothing conclusive within H generations
 import { ANALYSIS_TAGS } from '../../constants/ca'
-import { getConfig, totalisticTable, padRight, sanitizeStateString, normalizeStateCount, stateDigitFromCharCode } from '../caMath'
 import type { AnalysisInitMode, ClassifyOptions, ClassifyResult, ClassifyStats, RuleParts } from '../../types/ca'
-import { buildInitialRow, hashString, mulberry32 } from './shared'
+import { createEvolver } from './evolve'
 
 // Fraction-of-cells-changed threshold above which behaviour is deemed chaotic.
 const CHAOS_FLUX = 0.12
@@ -34,29 +34,12 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
   const width = Math.max(8, Math.floor(options.width))
   const height = Math.max(8, Math.floor(options.height))
   const init: AnalysisInitMode = options.init === 'single' ? 'single' : 'random'
-  const states = normalizeStateCount(parts.stateCount)
-  const config = getConfig(states, parts.neighborhood, parts.depth)
-  const radius = config.radius
-  const depth = config.depth
-
-  const sums = parts.mode === 'totalistic' ? totalisticTable(parts.code, states, config.neighborhood, config.depth) : null
-  const ruleStr =
-    parts.mode === 'totalistic'
-      ? null
-      : padRight(sanitizeStateString(parts.localRule, config.localDigits, states), config.localDigits)
-
-  const seedSource = parts.mode === 'totalistic' ? parts.code >>> 0 : hashString(parts.localRule || '')
-  const rand = mulberry32(Math.imul(seedSource + 1, 2654435761))
-
-  let row = buildInitialRow(width, states, init, rand)
+  // The evolver owns the rule table and the rolling `depth`-row window for every
+  // rule mode (totalistic, local and descendants), so the classifier sees the
+  // exact same space-time diagram as evolveRows and the interactive renderer.
+  const evolver = createEvolver(parts, { width, init })
+  let row = evolver.current
   let prevRow: Uint8Array | null = null
-  // Rolling window of the last `depth` rows (oldest first). Prior rows are zeros
-  // for single seeds and random rows for random seeds.
-  const window: Uint8Array[] = []
-  for (let i = 0; i < depth - 1; i++) {
-    window.push(init === 'single' ? new Uint8Array(width) : buildInitialRow(width, states, 'random', rand))
-  }
-  window.push(row)
   const seen = new Map<string, number>()
   const densities = new Array<number>(height)
   const fluxes = new Array<number>(height)
@@ -96,35 +79,8 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
     }
     seen.set(key, y)
 
-    const next = new Uint8Array(width)
-    for (let k = 0; k < width; k++) {
-      if (sums) {
-        let sum = 0
-        for (let t = 0; t < depth; t++) {
-          const r = window[t]
-          for (let d = -radius; d <= radius; d++) {
-            sum += r[(k + d + width) % width]
-          }
-        }
-        next[k] = sums[sum]
-      } else {
-        let index = 0
-        for (let t = 0; t < depth; t++) {
-          const r = window[t]
-          for (let d = -radius; d <= radius; d++) {
-            index = index * states + r[(k + d + width) % width]
-          }
-        }
-        const digit = stateDigitFromCharCode((ruleStr as string).charCodeAt(index))
-        next[k] = digit >= 0 ? digit : 0
-      }
-    }
     prevRow = row
-    row = next
-    window.push(next)
-    if (window.length > depth) {
-      window.shift()
-    }
+    row = evolver.step()
   }
 
   // No exact repeat within H: fall back to statistics over the last window.

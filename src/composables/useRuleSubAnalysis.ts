@@ -1,6 +1,6 @@
 import { ref, reactive, computed } from 'vue'
 import { subAnalyzeRule } from '../utils/caAnalysis'
-import { pickRandomCodes, pickRandomLocalRules, localCodeExceedsSafeInteger } from '../utils/caMath'
+import { pickRandomCodes, pickRandomRuleStrings, ruleCodeExceedsSafeInteger } from '../utils/caMath'
 import { buildAnalysisParts, buildAnalysisSnapshot } from '../utils/analysis/shared'
 import type {
   AnalysisInitMode,
@@ -81,8 +81,8 @@ export function useRuleSubAnalysis() {
     const to = Math.max(from, Math.floor(params.to))
     const ruleItems = params.sourceMode === 'tags' ? params.rules || [] : null
     const randomLocalRules =
-      params.sourceMode === 'random' && mode === 'local' && localCodeExceedsSafeInteger(stateCount, params.neighborhood, params.depth)
-        ? pickRandomLocalRules(stateCount, params.sampleCount || 1, params.neighborhood, params.depth)
+      params.sourceMode === 'random' && ruleCodeExceedsSafeInteger(mode, stateCount, params.neighborhood, params.depth)
+        ? pickRandomRuleStrings(mode, stateCount, params.sampleCount || 1, params.neighborhood, params.depth)
         : null
     const randomCodes =
       params.sourceMode === 'random' && !randomLocalRules
@@ -137,7 +137,7 @@ export function useRuleSubAnalysis() {
         parts = buildAnalysisParts(descriptor)
         snapshot = buildAnalysisSnapshot(descriptor, init, height)
         name = localRuleOverride
-          ? `loc. rand ${index + 1}`
+          ? `${mode === 'descendants' ? 'desc.' : 'loc.'} rand ${index + 1}`
           : mode === 'totalistic'
             ? `tot. ${code}`
             : mode === 'descendants'

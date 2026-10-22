@@ -5,6 +5,7 @@ import {
   buildLocalRuleFromTotalistic,
   codeToLocalRule,
   cycleTotalisticDigit,
+  descendantsCodeExceedsSafeInteger,
   descendantsCodeMax,
   getConfig,
   localCodeExceedsSafeInteger,
@@ -12,12 +13,15 @@ import {
   normalizeDepth,
   normalizeNeighborhood,
   normalizeStateCount,
+  pickRandomRuleStrings,
+  ruleCodeExceedsSafeInteger,
   sanitizeStateString,
   toBaseN,
   totalisticTable,
 } from '../src/utils/caMath'
 import { createEvolver, evolveRows } from '../src/utils/analysis/evolve'
 import { classifyRule } from '../src/utils/analysis/classify'
+import { buildAnalysisParts } from '../src/utils/analysis/shared'
 import type { RuleParts } from '../src/types/ca'
 
 const local = (localRule: string, stateCount = 2): RuleParts => ({ stateCount, mode: 'local', code: 0, localRule })
@@ -86,11 +90,32 @@ describe('rule codes (caMath)', () => {
     expect(buildLocalRuleFromTotalistic(1, 5, 7, 2)).toBe('') // 5^14 digits > limit
   })
 
-  // BUG? The comment on descendantsCodeMax promises the emission code space always fits a double, but with >5 states (allowed up to 36) it does not, so numeric sampling loses digits.
-  it.skip('descendants code space stays within exact double precision for every allowed state count', () => {
+  it('descendants code space: exact as a double up to 7 states, flagged from 8 on', () => {
+    expect(descendantsCodeMax(5)).toBe(5 ** 12 - 1)
+    expect(descendantsCodeMax(7)).toBeLessThanOrEqual(Number.MAX_SAFE_INTEGER)
     for (let states = 2; states <= 36; states++) {
-      expect(descendantsCodeMax(states)).toBeLessThanOrEqual(Number.MAX_SAFE_INTEGER)
+      const exceeds = descendantsCodeMax(states) > Number.MAX_SAFE_INTEGER
+      expect(descendantsCodeExceedsSafeInteger(states)).toBe(exceeds)
+      expect(ruleCodeExceedsSafeInteger('descendants', states)).toBe(exceeds)
+      expect(exceeds).toBe(states >= 8)
     }
+    expect(ruleCodeExceedsSafeInteger('totalistic', 36)).toBe(false)
+    expect(ruleCodeExceedsSafeInteger('local', 4)).toBe(true)
+  })
+
+  it('large descendants spaces are sampled as full-length emission strings, not lossy codes', () => {
+    const rules = pickRandomRuleStrings('descendants', 12, 20)
+    expect(rules).toHaveLength(20)
+    for (const rule of rules) {
+      expect(rule).toHaveLength(3 * 11)
+      expect(sanitizeStateString(rule, rule.length, 12)).toBe(rule)
+    }
+    // with 33 random base-12 digits the low-order ones vary (a double code would pin them)
+    expect(new Set(rules.map((r) => r.slice(0, 4))).size).toBeGreaterThan(1)
+    // the scan descriptor's rule string overrides the numeric code in descendants mode too
+    const parts = buildAnalysisParts({ stateCount: 12, mode: 'descendants', code: 0, localRule: rules[0] })
+    expect(parts.emissionRule).toBe(rules[0])
+    expect(buildAnalysisParts({ stateCount: 3, mode: 'descendants', code: 5 }).emissionRule).toBe('210000')
   })
 })
 
@@ -166,10 +191,13 @@ describe('classification (classify)', () => {
     expect(res.tag).toBe('Chaotic')
   })
 
-  // BUG? classifyRule has no descendants branch: it reads such rules as an empty local rule, so every descendants rule is tagged Dead.
-  it.skip('descendants rules are classified by their emission rule, not as an empty local rule', () => {
+  it('descendants rules are classified by their emission rule, not as an empty local rule', () => {
     const parts: RuleParts = { stateCount: 2, mode: 'descendants', code: 0, localRule: '', emissionRule: '111', collisionMode: 'sum' }
     expect(live(evolveRows(parts, { width: 64, height: 4, init: 'single' }).rows[3])).toBeGreaterThan(0) // evolve: alive
     expect(classifyRule(parts, opts).tag).not.toBe('Dead')
+    // 2 states, emit 111, collisions summed mod 2 = XOR of the three neighbours = Rule 150
+    expect(classifyRule(parts, opts)).toEqual(classifyRule(local(codeToLocalRule(150, 2)), opts))
+    expect(classifyRule({ ...parts, emissionRule: '000' }, opts).tag).toBe('Dead') // emits nothing
+    expect(classifyRule({ ...parts, emissionRule: '010' }, opts).tag).toBe('Fixed') // each cell copies itself down
   })
 })

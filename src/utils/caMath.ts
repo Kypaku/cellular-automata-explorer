@@ -1,7 +1,7 @@
 // Pure, framework-agnostic math helpers for totalistic / local-rule
 // one-dimensional cellular automata with an arbitrary number of states.
 
-import type { CaConfig, CollisionMode, RuleParts, RuleSnapshot } from '../types/ca'
+import type { CaConfig, CollisionMode, RuleMode, RuleParts, RuleSnapshot } from '../types/ca'
 
 /**
  * Cell-state digits: the index is the state value, the character is how that
@@ -438,9 +438,10 @@ export function randomEmissionRule(states: number): string {
 
 /**
  * Highest numeric code in the descendants emission space for `states`:
- * `states ^ (3 * (states - 1)) - 1`. Stays well within double precision for
- * all supported state counts (largest is 5^12 ≈ 2.44e8), so unlike local rules
- * the emission space can always be sampled precisely as numeric codes.
+ * `states ^ (3 * (states - 1)) - 1`. Exact as a double only up to 7 states
+ * (7^18 ≈ 1.6e15); from 8 states on (8^21 = 2^63, up to 36^105) it exceeds
+ * 2^53, so numeric codes lose their low-order digits — see
+ * {@link descendantsCodeExceedsSafeInteger} and {@link pickRandomRuleStrings}.
  */
 export function descendantsCodeMax(states: number): number {
   const count = normalizeStateCount(states)
@@ -459,4 +460,52 @@ export function codeToEmissionRule(code: number, states: number): string {
     remaining = Math.floor(remaining / count)
   }
   return rule
+}
+
+/**
+ * True when the descendants emission code space (`states ^ (3 * (states - 1))`)
+ * exceeds 2^53, i.e. numeric codes can no longer address every emission rule
+ * (8+ states). Random scans must then sample digit strings instead of codes.
+ */
+export function descendantsCodeExceedsSafeInteger(states: number): boolean {
+  const count = normalizeStateCount(states)
+  return emissionDigits(count) * Math.log2(count) > 53
+}
+
+/**
+ * True when the numeric code space of a rule in `mode` is too large to be
+ * sampled precisely as doubles (local rules with big tables, descendants rules
+ * with 8+ states). Totalistic codes always fit.
+ */
+export function ruleCodeExceedsSafeInteger(mode: RuleMode, states: number, neighborhood: number = 3, depth: number = 1): boolean {
+  if (mode === 'local') {
+    return localCodeExceedsSafeInteger(states, neighborhood, depth)
+  }
+  if (mode === 'descendants') {
+    return descendantsCodeExceedsSafeInteger(states)
+  }
+  return false
+}
+
+/**
+ * Picks `count` uniformly random rule digit strings for `mode`: emission rules
+ * for descendants mode, local-rule tables otherwise. Used by random scans when
+ * {@link ruleCodeExceedsSafeInteger} says numeric codes would lose digits.
+ */
+export function pickRandomRuleStrings(
+  mode: RuleMode,
+  states: number,
+  count: number,
+  neighborhood: number = 3,
+  depth: number = 1
+): string[] {
+  if (mode !== 'descendants') {
+    return pickRandomLocalRules(states, count, neighborhood, depth)
+  }
+  const n = Math.max(1, Math.floor(count))
+  const rules: string[] = []
+  for (let i = 0; i < n; i++) {
+    rules.push(randomEmissionRule(states))
+  }
+  return rules
 }
