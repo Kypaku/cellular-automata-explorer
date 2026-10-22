@@ -78,6 +78,44 @@ npm run release    # build + copy dist/ into the site folder (no commit/push; --
 > truth when checking for type errors.
 
 
+## Release
+
+The demo is served from the GitHub Pages repo `kypaku.github.io`, folder `pages/ca2026`
+(the build uses `base: '/pages/ca2026/'`). Publishing is a local, semi-manual step:
+
+```bash
+npm test                              # core unit tests (vitest, tests/caCore.test.ts)
+npm run type-check
+npm run release -- --dry-run          # no build, no writes: diff of dist/ vs the site folder (+ add, ~ update, - delete, = same)
+npm run release                       # npm run build, then sync dist/ into ../kypaku.github.io/pages/ca2026
+```
+
+- `--target <dir>` publishes into another folder, `--skip-build` reuses the existing `dist/`,
+  `--keep <name>` protects an extra file from deletion.
+- Files in the target that are not in the build are deleted, except `google*.html` (Search
+  Console verification), `CNAME` and `.nojekyll`.
+- The script never commits or pushes: it prints the `git commit` command for the site repo.
+  Check the page locally, then commit and push the site repo yourself.
+
+### CI
+
+`.github/workflows/ci.yml` (GitHub Actions, Node LTS, npm cache):
+- every push and pull request: `npm ci`, `npm run type-check`, `npm test`, `npm run build`;
+- a pushed tag `v*` (e.g. `git tag v1.2.0 && git push origin v1.2.0`) additionally runs a
+  release build after the checks and uploads `dist/` as the workflow artifact
+  `ca2026-dist-<tag>` (kept 90 days; download it from the run page).
+
+Deployment to the site is **not** automated: the site is a different repository, so CI would
+need a token with write access to it. To automate it later:
+1. Create a fine-grained personal access token limited to `kypaku.github.io` with
+   *Contents: read and write*, and store it in this repo as the secret `SITE_DEPLOY_TOKEN`.
+2. In the `release-build` job add steps after the build: check out
+   `kypaku/kypaku.github.io` with `token: ${{ secrets.SITE_DEPLOY_TOKEN }}` into `site/`; run
+   `npm run release -- --skip-build --target site/pages/ca2026`; then in `site/` set a bot
+   `git config user.name/user.email`, `git add -A`, commit `ca2026: publish build <tag>` and
+   `git push`.
+3. Never print the token in logs; keep the job limited to `v*` tags.
+
 ## Project structure
 
 ```
