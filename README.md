@@ -66,6 +66,9 @@ npm run dev        # local dev server (Vite)
 npm run build      # type-check (vue-tsc -b) + production build
 npm run preview    # preview the production build
 npm run type-check # type-check only (vue-tsc --noEmit)
+npm test           # unit tests for the automaton core (vitest)
+npm run release -- --dry-run   # show what would be published to ../kypaku.github.io/pages/ca2026
+npm run release    # build + copy dist/ into the site folder (no commit/push; --target <dir> to override)
 ```
 
 > On an older Node.js (e.g. 16.x), `npm run dev` / `npm run build` may fail with
