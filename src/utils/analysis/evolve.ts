@@ -26,6 +26,11 @@ export interface Evolver {
   width: number
   /** Normalized depth: how many of the latest rows determine the next one. */
   depth: number
+  /**
+   * True when a step also depends on a hidden PRNG (descendants with random
+   * collisions). Then a repeated row window does not prove a cycle.
+   */
+  stochastic: boolean
   /** The newest row of the diagram (replaced by every {@link Evolver.step}). */
   current: Uint8Array
   /** Computes the next generation, advances the history window and returns it. */
@@ -81,6 +86,7 @@ export function createEvolver(parts: RuleParts, options: EvolverOptions): Evolve
     states,
     width,
     depth,
+    stochastic: parts.mode === 'descendants' && collisionMode === 'random',
     current: row,
     step(): Uint8Array {
       const cur = window[window.length - 1]

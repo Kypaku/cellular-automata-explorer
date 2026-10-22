@@ -78,7 +78,10 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
     rowKeys.push(String.fromCharCode.apply(null, Array.from(row)))
     if (rowKeys.length > depth) rowKeys.shift()
     // The first depth-1 windows include hidden pre-history rows: skip them.
-    const key = rowKeys.length === depth ? (depth === 1 ? rowKeys[0] : rowKeys.join('|')) : ''
+    // With random collisions the PRNG state (not exposed, not in the key) also
+    // drives the step, so a repeated window proves nothing: no cycle detection,
+    // the rule falls through to the statistics below.
+    const key = !evolver.stochastic && rowKeys.length === depth ? (depth === 1 ? rowKeys[0] : rowKeys.join('|')) : ''
     if (key !== '' && seen.has(key)) {
       const period = y - (seen.get(key) as number)
       const tag = period === 1 ? ANALYSIS_TAGS.FIXED : ANALYSIS_TAGS.PERIODIC

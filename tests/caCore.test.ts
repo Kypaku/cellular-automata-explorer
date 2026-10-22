@@ -208,4 +208,14 @@ describe('classification (classify)', () => {
     expect(classifyRule({ ...parts, emissionRule: '000' }, opts).tag).toBe('Dead') // emits nothing
     expect(classifyRule({ ...parts, emissionRule: '010' }, opts).tag).toBe('Fixed') // each cell copies itself down
   })
+
+  it('random-collision descendants never claim an exact cycle (the PRNG state is hidden)', () => {
+    const opts = { width: 24, height: 80, init: 'random' } as const
+    for (const emissionRule of ['000012', '000020', '000102']) {
+      const base: RuleParts = { stateCount: 3, mode: 'descendants', code: 0, localRule: '', emissionRule }
+      expect(classifyRule({ ...base, collisionMode: 'random' }, opts).stats.reason).not.toBe('cycle')
+      expect(createEvolver({ ...base, collisionMode: 'sum' }, { width: 8, init: 'random' }).stochastic).toBe(false)
+    }
+    expect(classifyRule({ stateCount: 3, mode: 'descendants', code: 0, localRule: '', emissionRule: '000020', collisionMode: 'sum' }, opts).stats.reason).toBe('cycle')
+  })
 })
