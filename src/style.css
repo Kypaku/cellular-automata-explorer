@@ -11,12 +11,19 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/*
+ * The theme toggle overrides the OS preference, so the used color scheme must
+ * follow the class too: otherwise native controls keep the OS scheme (e.g.
+ * black `ButtonText` on the dark #1a1a1a buttons when the OS is light).
+ */
 html.dark {
+  color-scheme: dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 }
 
 html.light {
+  color-scheme: light;
   color: #213547;
   background-color: #ffffff;
 }

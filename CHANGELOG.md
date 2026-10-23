@@ -12,6 +12,7 @@ First versioned release (the version was 0.0.0 before). Release steps: [RELEASE.
 - Analysis evolver: local rules whose table is too large to materialize (e.g. 5 states, 7 cells, depth 2) are no longer padded to the full `states^(cells*depth)` length, which ran out of memory; unfilled neighbourhoods read as 0, as in the interactive renderer.
 - `npm run type-check` (also run by CI) checked nothing: `vue-tsc --noEmit` on the solution `tsconfig.json` (`"files": []`) has no input. It now checks `tsconfig.app.json` (src + tests) and `tsconfig.node.json`.
 - Large descendants rule spaces (8+ states) are sampled as full emission strings instead of numeric codes that lose their low digits.
+- Theme toggle: buttons were unreadable when the chosen theme differed from the OS one (black text on dark buttons in the dark theme on a light OS, white on light buttons in the light theme on a dark OS). `html.dark` / `html.light` now also set `color-scheme`.
 
 ### Changed
 - The classifier and the evolution core share one step implementation (`createEvolver`), so analysis matches the interactive renderer.
