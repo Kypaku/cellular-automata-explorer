@@ -8,6 +8,7 @@ First versioned release (the version was 0.0.0 before). Release steps: [RELEASE.
 - Rule classifier: descendants rules are now classified by their own emission rule (they used to be reported as Dead).
 - Rule classifier: cycle detection uses the whole `depth` window of rows, not only the last row, so depth > 1 rules no longer get false Fixed/Periodic tags.
 - Rule classifier: with random collisions a repeated window counts as a cycle only if no random number was drawn in between.
+- Rule classifier: with depth > 1 an empty or uniform row is reported as Dead only when the whole `depth` window is empty/uniform (an older row can revive the field; such rules used to get a false Dead).
 - Large descendants rule spaces (8+ states) are sampled as full emission strings instead of numeric codes that lose their low digits.
 
 ### Changed

@@ -45,6 +45,11 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
   // that whole window, not just of the newest row.
   const depth = evolver.depth
   const rowKeys: string[] = []
+  // Consecutive empty / uniform rows ending at the current one. With depth > 1
+  // an empty or uniform row is final only when the whole window is (an older
+  // row can still bring the field back), so Dead needs `depth` such rows.
+  let emptyRun = 0
+  let uniformRun = 0
   const densities = new Array<number>(height)
   const fluxes = new Array<number>(height)
 
@@ -68,11 +73,14 @@ export function classifyRule(parts: RuleParts, options: ClassifyOptions): Classi
       fluxes[y] = 1
     }
 
-    if (live === 0) {
-      return makeResult(ANALYSIS_TAGS.DEAD, { reason: 'extinct', generation: y, period: 0, density: 0, flux: 0 })
+    emptyRun = live === 0 ? emptyRun + 1 : 0
+    uniformRun = uniform ? uniformRun + 1 : 0
+    // `generation` is the first row of the run: when the field became dead.
+    if (emptyRun >= depth) {
+      return makeResult(ANALYSIS_TAGS.DEAD, { reason: 'extinct', generation: y - depth + 1, period: 0, density: 0, flux: 0 })
     }
-    if (uniform) {
-      return makeResult(ANALYSIS_TAGS.DEAD, { reason: 'uniform', generation: y, period: 0, density: live, flux: 0 })
+    if (uniformRun >= depth) {
+      return makeResult(ANALYSIS_TAGS.DEAD, { reason: 'uniform', generation: y - depth + 1, period: 0, density: live, flux: 0 })
     }
 
     rowKeys.push(String.fromCharCode.apply(null, Array.from(row)))

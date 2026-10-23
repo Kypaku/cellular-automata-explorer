@@ -235,3 +235,35 @@ describe('classification (classify)', () => {
     expect(classifyRule({ stateCount: 3, mode: 'descendants', code: 0, localRule: '', emissionRule: '000020', collisionMode: 'sum' }, opts).stats.reason).toBe('cycle')
   })
 })
+
+describe('classification: depth > 1 extinction and uniform rows', () => {
+  // 2 states, 3 cells, depth 2: the output is the centre cell of the OLDER row,
+  // so an empty row is followed by a copy of the row before it.
+  const echo = Array.from({ length: 64 }, (_, i) => String((i >> 4) & 1)).join('')
+  const opts = { width: 32, height: 64, init: 'single' as const }
+  const deep = (localRule: string): RuleParts => ({ ...local(localRule, 2), neighborhood: 3, depth: 2 })
+
+  it('an empty row is not extinction while an older row in the window is alive', () => {
+    const { rows } = evolveRows(deep(echo), { ...opts, height: 4 })
+    expect(rows[1].every((v) => v === 0)).toBe(true) // row 1 is empty ...
+    expect(rows[2].some((v) => v !== 0)).toBe(true) // ... and row 2 is alive again
+    const res = classifyRule(deep(echo), opts)
+    expect(res.tag).not.toBe('Dead') // was a false Dead (extinct at generation 1)
+    expect(res).toMatchObject({ tag: 'Periodic', stats: { reason: 'cycle', period: 2 } })
+  })
+
+  it('a uniform row is not Dead while an older row in the window is not uniform', () => {
+    const notEcho = echo.replace(/[01]/g, (c) => (c === '0' ? '1' : '0')) // output = NOT older centre
+    const res = classifyRule(deep(notEcho), opts)
+    expect(res.tag).not.toBe('Dead') // row 1 is all ones, row 2 = NOT row 0 again
+  })
+
+  it('still reports Dead once the whole window is empty / uniform', () => {
+    // depth 2, output = older centre AND newer centre: dies after one empty window
+    const and = Array.from({ length: 64 }, (_, i) => String(((i >> 4) & 1) & ((i >> 1) & 1))).join('')
+    expect(classifyRule(deep(and), opts)).toMatchObject({ tag: 'Dead', stats: { reason: 'extinct', generation: 1 } })
+    expect(classifyRule(totalistic(0, 3, 3, 3), opts)).toMatchObject({ tag: 'Dead', stats: { reason: 'extinct', generation: 1 } })
+    const allOnes = '1'.repeat(64)
+    expect(classifyRule(deep(allOnes), opts)).toMatchObject({ tag: 'Dead', stats: { reason: 'uniform', generation: 1 } })
+  })
+})
