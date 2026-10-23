@@ -85,7 +85,7 @@ The demo is served from the GitHub Pages repo `kypaku.github.io`, folder `pages/
 Step-by-step checklist for a release (version, checks, commands, manual steps): [RELEASE.md](RELEASE.md).
 
 ```bash
-npm test                              # core unit tests (vitest, tests/caCore.test.ts)
+npm test                              # core unit tests (vitest, tests/*.test.ts)
 npm run type-check
 npm run release -- --dry-run          # no build, no writes: diff of dist/ vs the site folder (+ add, ~ update, - delete, = same)
 npm run release                       # npm run build, then sync dist/ into ../kypaku.github.io/pages/ca2026

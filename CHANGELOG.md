@@ -10,6 +10,7 @@ First versioned release (the version was 0.0.0 before). Release steps: [RELEASE.
 - Rule classifier: with random collisions a repeated window counts as a cycle only if no random number was drawn in between.
 - Rule classifier: with depth > 1 an empty or uniform row is reported as Dead only when the whole `depth` window is empty/uniform (an older row can revive the field; such rules used to get a false Dead).
 - Analysis evolver: local rules whose table is too large to materialize (e.g. 5 states, 7 cells, depth 2) are no longer padded to the full `states^(cells*depth)` length, which ran out of memory; unfilled neighbourhoods read as 0, as in the interactive renderer.
+- `npm run type-check` (also run by CI) checked nothing: `vue-tsc --noEmit` on the solution `tsconfig.json` (`"files": []`) has no input. It now checks `tsconfig.app.json` (src + tests) and `tsconfig.node.json`.
 - Large descendants rule spaces (8+ states) are sampled as full emission strings instead of numeric codes that lose their low digits.
 
 ### Changed
