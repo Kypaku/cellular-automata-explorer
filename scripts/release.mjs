@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // Builds the app and publishes dist/ into the GitHub Pages site folder.
 //
 // Replaces the manual routine used so far:
@@ -13,6 +12,10 @@
 // CNAME, .nojekyll, plus any --keep names) — the manual routine once deleted
 // the verification file by accident.
 //
+// The build always runs with NODE_ENV=production: a NODE_ENV=development
+// inherited from the shell makes Vite bundle Vue's development build. A dist/
+// that is such a build is refused for publishing (a warning in --dry-run).
+//
 // Usage:
 //   node scripts/release.mjs [--target <dir>] [--dry-run] [--skip-build] [--keep <name>]...
 //   npm run release -- --dry-run
@@ -23,6 +26,9 @@
 //                   be copied/updated/deleted, comparing the existing dist/ with the target
 //   --skip-build    publish the existing dist/ without rebuilding
 //   --keep <name>   extra file name (relative to target) that must never be deleted
+
+// No #! line: the script is run as `node scripts/release.mjs`, and Vitest
+// cannot import a module with a hashbang (tests/release.test.mjs imports it).
 
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -132,10 +138,47 @@ function checkBase(targetDir) {
   }
 }
 
+/**
+ * Environment for `npm run build`. NODE_ENV is forced to "production": with
+ * NODE_ENV=development inherited from the shell (e.g. a terminal of an
+ * Electron dev app) `vite build` bundles Vue's development build — about 65 kB
+ * bigger, with dev-only warnings — and nothing in the output says so.
+ */
+export function buildEnv(env = process.env) {
+  return { ...env, NODE_ENV: 'production' }
+}
+
+/** Strings that only Vue's development build contains (its runtime warnings). */
+const DEV_BUILD_MARKERS = ['Component is missing template or render function']
+
+/** True if a bundled JS file contains Vue's development build. */
+export function looksLikeDevBuild(js) {
+  return DEV_BUILD_MARKERS.some((m) => js.includes(m))
+}
+
+/** Warns (dry run) or stops if dist/assets has a development build of Vue. */
+function checkProductionBuild(dryRun) {
+  const assetsDir = path.join(distDir, 'assets')
+  const dev = listFiles(assetsDir).filter(
+    (rel) => rel.endsWith('.js') && looksLikeDevBuild(fs.readFileSync(path.join(assetsDir, rel), 'utf8'))
+  )
+  if (dev.length === 0) return
+  const message =
+    `dist/assets/${dev.join(', dist/assets/')} is a development build ` +
+    '(built with NODE_ENV other than "production")'
+  if (dryRun) console.warn(`release: warning: ${message} — a real run rebuilds it`)
+  else fail(`${message} — run without --skip-build, or rebuild with NODE_ENV=production`)
+}
+
 function runBuild() {
   console.log('> npm run build')
   const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
-  const res = spawnSync(npm, ['run', 'build'], { cwd: repoRoot, stdio: 'inherit', shell: process.platform === 'win32' })
+  const res = spawnSync(npm, ['run', 'build'], {
+    cwd: repoRoot,
+    env: buildEnv(),
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  })
   if (res.status !== 0) fail(`build failed (exit ${res.status})`)
 }
 
@@ -168,7 +211,7 @@ function stamp() {
 function main() {
   const opts = parseArgs(process.argv.slice(2))
   if (opts.help) {
-    const header = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 26)
+    const header = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(0, 28)
     console.log(header.map((l) => l.replace(/^\/\/ ?/, '')).join('\n'))
     return
   }
@@ -184,6 +227,7 @@ function main() {
     runBuild()
   }
   checkBase(opts.target)
+  checkProductionBuild(opts.dryRun)
 
   const plan = planRelease(distDir, opts.target, opts.keep)
   printPlan(plan)

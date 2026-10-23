@@ -13,6 +13,7 @@ First versioned release (the version was 0.0.0 before). Release steps: [RELEASE.
 - `npm run type-check` (also run by CI) checked nothing: `vue-tsc --noEmit` on the solution `tsconfig.json` (`"files": []`) has no input. It now checks `tsconfig.app.json` (src + tests) and `tsconfig.node.json`.
 - Large descendants rule spaces (8+ states) are sampled as full emission strings instead of numeric codes that lose their low digits.
 - Theme toggle: buttons were unreadable when the chosen theme differed from the OS one (black text on dark buttons in the dark theme on a light OS, white on light buttons in the light theme on a dark OS). `html.dark` / `html.light` now also set `color-scheme`.
+- `npm run release` builds with `NODE_ENV=production`: a `NODE_ENV=development` inherited from the shell made Vite bundle Vue's development build (392 kB instead of 328 kB, dev warnings). A `dist/` that is a development build is refused for publishing (`--skip-build`) and reported in `--dry-run`.
 
 ### Changed
 - The classifier and the evolution core share one step implementation (`createEvolver`), so analysis matches the interactive renderer.
