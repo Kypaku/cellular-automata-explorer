@@ -21,6 +21,13 @@ How the publishing works in general: README, section *Release*.
 
 ## 2. Release commands
 
+One run on Windows does sections 2 and 3 (checks, `npm run release`, tag, push of `master` and
+the tag, commit and push of the site; asks "Выпустить v<x.y.z>? (да/нет)" before the tag and pushes):
+`powershell -ExecutionPolicy Bypass -File .\release.ps1` — with `-DryRun` it only runs the checks
+and prints the commands (nothing is built, written, tagged or pushed). The owner runs it, not agents.
+
+The same steps by hand:
+
 ```bash
 npm run release -- --dry-run     # preview: what will be added (+), updated (~), deleted (-)
 npm run release                  # build + sync dist/ into ../kypaku.github.io/pages/ca2026
@@ -32,7 +39,7 @@ Check the dry-run list: only `index.html`, `assets/*` and public files should ch
 
 ## 3. Left for the owner (manual steps)
 
-These are deliberately not automated and are not done by the release script or by agents:
+These are not done by `npm run release` or by agents (`release.ps1` does steps 1 and 3 after the confirmation):
 
 1. Push this repo and the tag:
    ```bash
