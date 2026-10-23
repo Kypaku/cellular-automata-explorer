@@ -81,7 +81,8 @@ npm run release    # build + copy dist/ into the site folder (no commit/push; --
 ## Release
 
 The demo is served from the GitHub Pages repo `kypaku.github.io`, folder `pages/ca2026`
-(the build uses `base: '/pages/ca2026/'`). Publishing is a local, semi-manual step:
+(the build uses `base: '/pages/ca2026/'`). Publishing is a local, semi-manual step.
+Step-by-step checklist for a release (version, checks, commands, manual steps): [RELEASE.md](RELEASE.md).
 
 ```bash
 npm test                              # core unit tests (vitest, tests/caCore.test.ts)

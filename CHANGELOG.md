@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased (since master)
+## 0.1.0 — 2026-10-23
+
+First versioned release (the version was 0.0.0 before). Release steps: [RELEASE.md](RELEASE.md).
 
 ### Fixed
 - Rule classifier: descendants rules are now classified by their own emission rule (they used to be reported as Dead).
@@ -15,3 +17,4 @@
 - `npm run release` (`--dry-run`, `--skip-build`, `--target`) to sync `dist/` into the site folder.
 - GitHub Actions CI (type-check, tests, build) and a release build artifact on `v*` tags.
 - Unit tests for rule codes, evolution and classification (`npm test`).
+- `RELEASE.md`: release checklist (checks, commands, manual steps for the owner).
