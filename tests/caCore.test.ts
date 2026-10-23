@@ -267,3 +267,21 @@ describe('classification: depth > 1 extinction and uniform rows', () => {
     expect(classifyRule(deep(allOnes), opts)).toMatchObject({ tag: 'Dead', stats: { reason: 'uniform', generation: 1 } })
   })
 })
+
+describe('local rules too large to materialize', () => {
+  // 5 states, 7 cells, depth 2: 5^14 ≈ 6.1e9 table digits, far above LOCAL_MATERIALIZE_LIMIT.
+  const huge = (localRule: string): RuleParts => ({ ...local(localRule, 5), neighborhood: 7, depth: 2 })
+
+  it('are stepped from the given digits, unfilled neighbourhoods read as 0 (no padding to 5^14)', () => {
+    // only the all-zero neighbourhood (index 0) maps to 1
+    const ev = createEvolver(huge('1'), { width: 32, init: 'single' })
+    const row = Array.from(ev.step())
+    expect(row).toEqual(Array.from({ length: 32 }, (_, k) => (Math.abs(k - 16) <= 3 ? 0 : 1)))
+    expect(evolveRows(huge('1'), { width: 32, height: 6, init: 'random' }).rows).toHaveLength(6)
+  })
+
+  it('an empty huge local rule evolves to an empty field instead of throwing', () => {
+    expect(() => createEvolver(huge(''), { width: 16, init: 'single' }).step()).not.toThrow()
+    expect(classifyRule(huge(''), { width: 16, height: 16, init: 'single' })).toMatchObject({ tag: 'Dead', stats: { reason: 'extinct' } })
+  })
+})

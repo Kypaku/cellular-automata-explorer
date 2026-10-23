@@ -1,5 +1,6 @@
 // Evolves a rule and returns the last `keep` rows of the space-time diagram.
 import {
+  canMaterializeLocal,
   getConfig,
   totalisticTable,
   padRight,
@@ -58,10 +59,10 @@ export function createEvolver(parts: RuleParts, options: EvolverOptions): Evolve
   const depth = config.depth
 
   const sums = parts.mode === 'totalistic' ? totalisticTable(parts.code, states, config.neighborhood, config.depth) : null
-  const ruleStr =
-    parts.mode === 'local'
-      ? padRight(sanitizeStateString(parts.localRule, config.localDigits, states), config.localDigits)
-      : null
+  // Tables too large to materialize are left un-padded (like the interactive
+  // renderer): neighbourhoods past the end of the string read as state 0.
+  const localDigits = parts.mode === 'local' ? sanitizeStateString(parts.localRule, config.localDigits, states) : null
+  const ruleStr = localDigits === null ? null : canMaterializeLocal(config) ? padRight(localDigits, config.localDigits) : localDigits
 
   // Descendants: emission triple per live state + collision resolution matching
   // whatever the user selected in the rule settings.
@@ -111,7 +112,7 @@ export function createEvolver(parts: RuleParts, options: EvolverOptions): Evolve
             }
           }
           next[k] = sums[sum]
-        } else if (ruleStr) {
+        } else if (ruleStr !== null) {
           let index = 0
           for (let t = 0; t < depth; t++) {
             const r = window[t]
